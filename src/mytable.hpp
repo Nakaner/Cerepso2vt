@@ -12,22 +12,15 @@
 #include <libpq-fe.h>
 #include <osmium/memory/buffer.hpp>
 #include <osmium/geom/coordinates.hpp>
-#include <postgres-drivers/include/table.hpp>
-
-/**
- * Bounding box which represents a tile in EPSG:4326 including a buffer.
- */
-struct BoundingBox {
-    double min_lon;
-    double min_lat;
-    double max_lon;
-    double max_lat;
-
-    BoundingBox(osmium::geom::Coordinates& south_west, osmium::geom::Coordinates& north_east);
-};
+#include <osmium/handler/node_locations_for_ways.hpp>
+#include <osmium/index/map/sparse_mmap_array.hpp>
+#include <osmium/osm/location.hpp>
+#include <table.hpp>
+#include "bounding_box.hpp"
 
 using TagVector = std::vector<std::string, std::string>;
 
+using index_type = osmium::index::map::SparseMmapArray<osmium::unsigned_object_id_type, osmium::Location>;
 using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
 
 /**
@@ -39,6 +32,9 @@ private:
      * create all necessary prepared statements for this table
      *
      * This method chooses the suitable prepared statements which are dependend from the table type (point vs. way vs. …).
+     * It overwrites the method of the superclass but calls the method of the superclass.
+     *
+     * \throws std::runtime_error
      */
     void create_prepared_statements();
 
@@ -48,10 +44,21 @@ private:
     void add_tags(osmium::memory::Buffer& buffer, osmium::builder::Builder& builder, std::string& hstore_content);
 
 public:
+    MyTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns) :
+            postgres_drivers::Table(table_name, config, columns) {
+        create_prepared_statements();
+    };
+
     /**
-     * get all nodes
+     * \brief Get all nodes in the tile
+     *
+     * \param node_buffer buffer where to write the nodes
+     * \param location_handler location handler which handles the location of the nodes
+     * \param bbox bounding box specifying the extend of the tile (including a buffer around its edges)
+     *
+     * \throws std::runtime_error
      */
-    std::vector<osmium::Node&> get_nodes_inside(osmium::memory::Buffer& node_buffer, location_handler_type& location_handler,
+    void get_nodes_inside(osmium::memory::Buffer& node_buffer, location_handler_type& location_handler,
             BoundingBox& bbox);
 };
 
