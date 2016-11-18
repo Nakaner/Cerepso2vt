@@ -18,12 +18,7 @@ void MyTable::add_tags(osmium::memory::Buffer& buffer, osmium::builder::Builder&
 //    }
 }
 
-void MyTable::get_nodes_inside(osmium::memory::Buffer& node_buffer, location_handler_type& location_handler,
-        BoundingBox& bbox) {
-    assert(m_database_connection);
-    assert(m_columns.get_type() == postgres_drivers::TableType::POINT || m_columns.get_type() == postgres_drivers::TableType::UNTAGGED_POINT);
-    // build array of parameters for prepared statement
-    char const *paramValues[4];
+void MyTable::build_bbox_query_params(BoundingBox& bbox, char** const params_array) {
     char param1 [25];
     char param2 [25];
     char param3 [25];
@@ -32,10 +27,20 @@ void MyTable::get_nodes_inside(osmium::memory::Buffer& node_buffer, location_han
     sprintf(param2, "%f", bbox.min_lat);
     sprintf(param3, "%f", bbox.max_lon);
     sprintf(param4, "%f", bbox.max_lat);
-    paramValues[0] = param1;
-    paramValues[1] = param2;
-    paramValues[2] = param3;
-    paramValues[3] = param4;
+    params_array[0] = param1;
+    params_array[1] = param2;
+    params_array[2] = param3;
+    params_array[3] = param4;
+}
+
+void MyTable::get_nodes_inside(osmium::memory::Buffer& node_buffer, location_handler_type& location_handler,
+        BoundingBox& bbox) {
+    assert(m_database_connection);
+    assert(m_columns.get_type() == postgres_drivers::TableType::POINT || m_columns.get_type() == postgres_drivers::TableType::UNTAGGED_POINT);
+
+    // build array of parameters for prepared statement
+    char* paramValues[4];
+    build_bbox_query_params(bbox, paramValues);
 
     PGresult *result;
     if  (m_columns.get_type() == postgres_drivers::TableType::POINT) {

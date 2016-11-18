@@ -43,6 +43,14 @@ private:
      */
     void add_tags(osmium::memory::Buffer& buffer, osmium::builder::Builder& builder, std::string& hstore_content);
 
+    /**
+     * \brief helper method to build an array of bbox parameters
+     *
+     * \param bbox bounding box
+     * \param params_array (size == 4) array to be filled with the parameters derived from bbox argument
+     */
+    void build_bbox_query_params(BoundingBox& bbox, char** const params_array);
+
 public:
     MyTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns) :
             postgres_drivers::Table(table_name, config, columns) {
