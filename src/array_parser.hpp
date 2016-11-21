@@ -55,8 +55,6 @@ class ArrayParser : public PostgresParser<typename TypeConversion::output_type> 
 public:
     ArrayParser(std::string& string_repr) : PostgresParser<typename TypeConversion::output_type>(string_repr) {};
 
-//    ~ArrayParser();
-
     /**
      * has the parser reached the end of the hstore
      */

@@ -34,9 +34,6 @@ class TypeConversion {
 public:
     using output_type = typename TypeConversionImpl::output_type;
 
-//    template <typename TOutput, typename TypeConversionImpl>
-//    TypeConversion
-
     output_type to_output_format(std::string& str) {
         return m_impl.to_output_format(str);
     }
