@@ -127,11 +127,8 @@ set(CMAKE_BUILD_TYPE ${build_type}
 #  Unit and data tests
 #
 #-----------------------------------------------------------------------------
-#enable_testing()
-#add_subdirectory(test)
-
-
-
+enable_testing()
+add_subdirectory(test)
 
 
 #-----------------------------------------------------------------------------

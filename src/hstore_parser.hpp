@@ -8,13 +8,11 @@
 #ifndef SRC_HSTORE_PARSER_HPP_
 #define SRC_HSTORE_PARSER_HPP_
 
+#include "postgres_parser.hpp"
+
 using StringPair = std::pair<std::string, std::string>;
 
-class HStoreParser {
-private:
-    std::string& m_hstore;
-    size_t m_current_position = 0;
-
+class HStoreParser : public PostgresParser<StringPair> {
 public:
     HStoreParser(std::string& hstore);
 
