@@ -9,7 +9,7 @@
 #include "util.hpp"
 #include <array_parser.hpp>
 
-TEST_CASE( "Test array parsing") {
+TEST_CASE("Test array parsing") {
     std::string string_repr;
 
     SECTION("array of integers") {

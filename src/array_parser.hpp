@@ -1,7 +1,7 @@
 /*
  * array_parser.hpp
  *
- *  Created on: 21.11.2016
+ *  Created on: 2016-11-21
  *      Author: Michael Reichert
  */
 
@@ -13,7 +13,11 @@
 #include "postgres_parser.hpp"
 
 /**
- * \brief Class to parse one dimensional arrays
+ * \brief Class to parse one dimensional arrays received from a PostgreSQL database query response which are encoded as strings.
+ *
+ * This class needs a type conversion implementation as template argument. Use the aliases defined by type_conversion.hpp.
+ *
+ * See tests/t/test_array_parser.cpp for usage examples of this class.
  */
 template <typename TypeConversion>
 class ArrayParser : public PostgresParser<typename TypeConversion::output_type> {
@@ -56,7 +60,7 @@ public:
     ArrayParser(std::string& string_repr) : PostgresParser<typename TypeConversion::output_type>(string_repr) {};
 
     /**
-     * has the parser reached the end of the hstore
+     * \brief Has the parser reached the end of the hstore?
      */
     bool has_next() {
         if (m_current_position >= postgres_parser_type::m_string_repr.size() - 1) {
@@ -74,7 +78,7 @@ public:
      */
     typename TypeConversion::output_type get_next() {
         std::string to_convert;
-        bool inside_quotation_marks = false; // track if we are inside ")
+        bool inside_quotation_marks = false; // track if we are inside '""
         if (m_current_position == 1 && postgres_parser_type::m_string_repr.at(m_current_position) == '"') {
             inside_quotation_marks = true;
             m_current_position++;
