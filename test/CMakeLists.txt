@@ -21,3 +21,8 @@ add_test(NAME test_array_parser
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND test_array_parser)
 
+add_executable(test_hstore_parser t/test_hstore_parser.cpp ../src/hstore_parser.cpp)
+target_link_libraries(test_hstore_parser testlib)
+add_test(NAME test_hstore_parser
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND test_hstore_parser)

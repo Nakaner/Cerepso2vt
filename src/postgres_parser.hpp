@@ -8,8 +8,6 @@
 #ifndef SRC_POSTGRES_PARSER_HPP_
 #define SRC_POSTGRES_PARSER_HPP_
 
-#include "type_conversion.hpp"
-
 template <typename TSingleElementType>
 class PostgresParser {
 protected:

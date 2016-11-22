@@ -1,7 +1,7 @@
 /*
  * util.hpp
  *
- *  Created on: 21.11.2016
+ *  Created on: 2016-11-21
  *      Author: Michael Reichert
  */
 
@@ -15,6 +15,8 @@ namespace test_utils {
      * \both Compare two vectors.
      *
      * Elements must have the same order.
+     *
+     * Class T must define operator!=(const T, const T).
      *
      * \param vector1 first vector
      * \param vector2 second vector
@@ -32,6 +34,13 @@ namespace test_utils {
         return true;
     }
 
+    /**
+     * \brief Print the contents of a vector.
+     *
+     * Type T must implement operator<<
+     *
+     * \param vector reference to vector to be printed
+     */
     template <class T>
     void print_vector(std::vector<T>& vector) {
         std::cerr << '{';
