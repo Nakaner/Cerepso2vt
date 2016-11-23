@@ -46,11 +46,9 @@ class ArrayParser : public PostgresParser<typename TypeConversion::output_type> 
     bool element_finished(const char next_char, const bool inside_quotation_marks) {
         if (inside_quotation_marks && next_char == '"') {
             return true;
-        }
-        else if (!inside_quotation_marks && next_char == ',') {
+        } else if (!inside_quotation_marks && next_char == ',') {
             return true;
-        }
-        else if (!inside_quotation_marks && next_char == '}') {
+        } else if (!inside_quotation_marks && next_char == '}') {
             return true;
         }
         return false;
