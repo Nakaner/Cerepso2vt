@@ -29,6 +29,8 @@ enum class ArrayParts : ArrayPartsType {
  * This class needs a type conversion implementation as template argument. Use the aliases defined by type_conversion.hpp.
  *
  * See tests/t/test_array_parser.cpp for usage examples of this class.
+ *
+ * \todo use C strings instead of std::string
  */
 template <typename TypeConversion>
 class ArrayParser : public PostgresParser<typename TypeConversion::output_type> {
