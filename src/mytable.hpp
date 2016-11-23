@@ -15,6 +15,7 @@
 #include <osmium/handler/node_locations_for_ways.hpp>
 #include <osmium/index/map/sparse_mmap_array.hpp>
 #include <osmium/osm/location.hpp>
+#include <osmium/builder/osm_object_builder.hpp>
 #include <table.hpp>
 #include "bounding_box.hpp"
 
@@ -41,7 +42,17 @@ private:
     /**
      * add a tags to an OSM object
      */
-    void add_tags(osmium::memory::Buffer& buffer, osmium::builder::Builder& builder, std::string& hstore_content);
+    void add_tags(osmium::memory::Buffer& buffer, osmium::builder::Builder* builder, std::string& hstore_content);
+
+    /**
+     * \brief add node references to a way
+     *
+     * \param ways_buffer buffer where the way resides
+     * \param way_builder pointer to the WayBuilder which builds the way
+     * \param nodes_array reference to the string which contains the string representation of the array we received from
+     * the database
+     */
+    void add_node_refs(osmium::memory::Buffer& ways_buffer, osmium::builder::WayBuilder* way_builder, std::string& nodes_array);
 
     /**
      * \brief helper method to build an array of bbox parameters
@@ -68,6 +79,16 @@ public:
      */
     void get_nodes_inside(osmium::memory::Buffer& node_buffer, location_handler_type& location_handler,
             BoundingBox& bbox);
+
+    /**
+     * \brief Get all ways inside the tile
+     *
+     * \param ways_buffer buffer where to write the ways
+     * \param bbox bounding box specifying the extend of the tile (including a buffer around its edges)
+     *
+     * \throws std::runtime_error
+     */
+    void get_ways_inside(osmium::memory::Buffer& ways_buffer, BoundingBox& bbox);
 };
 
 

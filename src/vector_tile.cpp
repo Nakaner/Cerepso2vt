@@ -50,9 +50,13 @@ void VectorTile::get_nodes_inside() {
     m_untagged_nodes_table.get_nodes_inside(m_nodes_buffer, m_location_handler, m_bbox);
 }
 
+void VectorTile::get_ways_inside() {
+    m_ways_table.get_ways_inside(m_ways_buffer, m_bbox);
+}
+
 void VectorTile::generate_vectortile() {
     get_nodes_inside();
-//    get_ways_inside();
+    get_ways_inside();
 //    get_relations_inside();
 //    get_missing_relations();
 //    get_missing_ways();
@@ -69,6 +73,7 @@ void VectorTile::write_file() {
     osmium::io::File output_file{m_destination_path};
     osmium::io::Writer writer{output_file, header};
     writer(std::move(m_nodes_buffer));
+    writer(std::move(m_ways_buffer));
     writer.close();
 }
 

@@ -58,6 +58,11 @@ private:
     void get_nodes_inside();
 
     /**
+     * get ways intersecting this tile
+     */
+    void get_ways_inside();
+
+    /**
      * get all ways which are reference but have not been satisfied yet
      */
     void get_missing_ways();
