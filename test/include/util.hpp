@@ -43,9 +43,9 @@ namespace test_utils {
      */
     template <class T>
     void print_vector(std::vector<T>& vector) {
-        std::cerr << '{';
+        std::cerr << "{\"";
         for (T& v : vector) {
-            std::cerr << v << ',';
+            std::cerr << v << "\",\"";
         }
         std::cerr << "}\n";
     }
