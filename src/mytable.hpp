@@ -50,9 +50,24 @@ private:
      * \param ways_buffer buffer where the way resides
      * \param way_builder pointer to the WayBuilder which builds the way
      * \param nodes_array reference to the string which contains the string representation of the array we received from
+     * \param location_handler reference to a location handler which is used to look up if a node referenced by a way was retrieved by
+     *        the spatial node queries
+     * \param missing_nodes set where to add all nodes which are not available
      * the database
      */
-    void add_node_refs(osmium::memory::Buffer& ways_buffer, osmium::builder::WayBuilder* way_builder, std::string& nodes_array);
+    void add_node_refs(osmium::memory::Buffer& ways_buffer, osmium::builder::WayBuilder* way_builder, std::string& nodes_array,
+            location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes);
+
+    /**
+     * \brief add members to a relation
+     *
+     * \param relation_buffer buffer where the relation resides
+     * \param relation_builder pointer to the RelationBuilder which builds the relation
+     * \param member_types reference to the string which contains the string representation of the array from member_types column
+     * \param member_ids reference to a location handler which contains the string representation of the array from member_ids column
+     */
+    void add_relation_members(osmium::memory::Buffer& relation_buffer, osmium::builder::RelationBuilder* relation_builder,
+            std::string& member_types, std::string& member_ids);
 
     /**
      * \brief helper method to build an array of bbox parameters
@@ -85,10 +100,25 @@ public:
      *
      * \param ways_buffer buffer where to write the ways
      * \param bbox bounding box specifying the extend of the tile (including a buffer around its edges)
+     * \param location_handler reference to a location handler which is used to look up if a node referenced by a way was retrieved by
+     *        the spatial node queries
+     * \param missing_nodes set where to add all nodes which are not available
      *
      * \throws std::runtime_error
      */
-    void get_ways_inside(osmium::memory::Buffer& ways_buffer, BoundingBox& bbox);
+    void get_ways_inside(osmium::memory::Buffer& ways_buffer, BoundingBox& bbox, location_handler_type& location_handler,
+            std::set<osmium::object_id_type>& missing_nodes);
+
+    // This does not work yet. You cannot use ST_INTERSECTS with GeometryCollection.
+//    /**
+//     * \brief Get all ways inside the tile
+//     *
+//     * \param ways_buffer buffer where to write the ways
+//     * \param bbox bounding box specifying the extend of the tile (including a buffer around its edges)
+//     *
+//     * \throws std::runtime_error
+//     */
+//    void get_relations_inside(osmium::memory::Buffer& relations_buffer, BoundingBox& bbox);
 };
 
 

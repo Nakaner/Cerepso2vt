@@ -51,13 +51,19 @@ void VectorTile::get_nodes_inside() {
 }
 
 void VectorTile::get_ways_inside() {
-    m_ways_table.get_ways_inside(m_ways_buffer, m_bbox);
+    m_ways_table.get_ways_inside(m_ways_buffer, m_bbox, m_location_handler, m_missing_nodes);
 }
+
+//void VectorTile::get_relations_inside() {
+//    m_relations_table.get_relations_inside(m_relations_buffer, m_bbox);
+//}
 
 void VectorTile::generate_vectortile() {
     get_nodes_inside();
     get_ways_inside();
+    // This query does not work yet. You cannot use ST_INTERSECTS with GeometryCollection.
 //    get_relations_inside();
+
 //    get_missing_relations();
 //    get_missing_ways();
 //    get_misssing_nodes();
@@ -74,6 +80,7 @@ void VectorTile::write_file() {
     osmium::io::Writer writer{output_file, header};
     writer(std::move(m_nodes_buffer));
     writer(std::move(m_ways_buffer));
+    writer(std::move(m_relations_buffer));
     writer.close();
 }
 

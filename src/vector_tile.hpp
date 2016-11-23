@@ -36,9 +36,10 @@ private:
     index_type m_index; // necessary for m_location_handler
     location_handler_type m_location_handler;
 
-    std::set<int64_t> m_missing_nodes;
-    std::set<int64_t> m_missing_ways;
-    std::set<int64_t> m_missing_relations;
+    /// list of nodes not retrieved by a spatial query but which are necessary to build the ways
+    std::set<osmium::object_id_type> m_missing_nodes;
+    std::set<osmium::object_id_type> m_missing_ways;
+    std::set<osmium::object_id_type> m_missing_relations;
 
     BoundingBox m_bbox;
 
@@ -61,6 +62,12 @@ private:
      * get ways intersecting this tile
      */
     void get_ways_inside();
+
+    // This does not work yet. You cannot use ST_INTERSECTS with GeometryCollection.
+//    /**
+//     * get relations intersecting this tile
+//     */
+//    void get_relations_inside();
 
     /**
      * get all ways which are reference but have not been satisfied yet
