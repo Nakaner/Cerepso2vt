@@ -21,6 +21,15 @@ protected:
      */
     size_t m_current_position = 0;
 
+    /**
+     * \brief Throw std::runtime_error due to invalid syntax
+     *
+     * \param error error type to be included into the message
+     *
+     * \throws std::runtime_error
+     */
+    virtual void invalid_syntax(std::string error) = 0;
+
 public:
     PostgresParser(std::string& string_representation) :
         m_string_repr(string_representation) {};

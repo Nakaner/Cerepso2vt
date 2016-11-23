@@ -22,6 +22,17 @@ public:
     output_type to_output_format(std::string& str) {
         return str;
     }
+
+    /**
+     * \brief Return the NULL value of output_type. That's an empty string.
+     *
+     * This method is called if the database returns NULL (not "NULL").
+     *
+     * \returns empty string
+     */
+    output_type return_null_value() {
+        return "";
+    }
 };
 
 /**
@@ -33,6 +44,17 @@ public:
 
     output_type to_output_format(std::string& str) {
         return std::strtoll(str.c_str(), NULL, 10);
+    }
+
+    /**
+     * \brief Return the NULL value of output_type. That's 0.
+     *
+     * This method is called if the database returns NULL (not "NULL").
+     *
+     * \returns 0
+     */
+    output_type return_null_value() {
+        return 0;
     }
 };
 
@@ -54,9 +76,20 @@ public:
      * \brief Convert to the output format.
      *
      * \param str string to be converted
+     *
+     * \return str converted to the output format
      */
     output_type to_output_format(std::string& str) {
         return m_impl.to_output_format(str);
+    }
+
+    /**
+     * \brief Return the NULL value of output_type.
+     *
+     * This method is called if the database returns NULL (not "NULL").
+     */
+    output_type return_null_value() {
+        return m_impl.return_null_value();
     }
 };
 

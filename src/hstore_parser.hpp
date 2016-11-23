@@ -84,14 +84,7 @@ class HStoreParser : public PostgresParser<StringPair> {
      */
     void increase_parse_progress();
 
-    /**
-     * \brief Throw std::runtime_error due to invalid hstore syntax
-     *
-     * \param error error type to be included into the message
-     *
-     * \throws std::runtime_error
-     */
-    void invalid_hstore_syntax(std::string error);
+    void invalid_syntax(std::string error);
 
 public:
     /**
