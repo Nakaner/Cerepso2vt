@@ -36,6 +36,39 @@ public:
 };
 
 /**
+ * \brief TypeConversionImpl implementation to be used with TypeConversion class if the output format should be char.
+ */
+class CharConversionImpl {
+public:
+    using output_type = char;
+
+    /**
+     * \brief Convert to the output format.
+     *
+     * \param str string to be converted
+     *
+     * \return first character of the string. If the string is empty, return_null_value() is called.
+     */
+    output_type to_output_format(std::string& str) {
+        if (str.length() > 0) {
+            return str.at(0);
+        }
+        return return_null_value();
+    }
+
+    /**
+     * \brief Return the NULL value of output_type. That's an empty string.
+     *
+     * This method is called if the database returns NULL (not "NULL").
+     *
+     * \returns a null character (\0)
+     */
+    output_type return_null_value() {
+        return '\0';
+    }
+};
+
+/**
  * \brief TypeConversionImpl implementation to be used with the TypeConversion class if the output format should be int64_t.
  */
 class Int64ConversionImpl {
@@ -94,6 +127,8 @@ public:
 };
 
 using StringConversion = TypeConversion<StringConversionImpl>;
+
+using CharConversion = TypeConversion<CharConversionImpl>;
 
 using Int64Conversion = TypeConversion<Int64ConversionImpl>;
 
