@@ -117,10 +117,7 @@ void MyTable::get_nodes_inside(osmium::memory::Buffer& node_buffer, location_han
         node.set_uid(PQgetvalue(result, i, 1 + field_offset));
         // otherwise the resulting OSM file does not contain the visible=true attribute and some programs behave strange
         node.set_visible(true);
-        char timestamp[21];
-        strncpy(timestamp, PQgetvalue(result, i, 3 + field_offset), 20);
-        timestamp[20] = '\0';
-        node.set_timestamp(timestamp);
+        node.set_timestamp(PQgetvalue(result, i, 3 + field_offset));
         builder.set_user("");
         node.set_location(location);
         // Location handler must be called before add_tags(). That's a limitation by Osmium.
