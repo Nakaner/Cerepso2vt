@@ -35,6 +35,14 @@ enum class ArrayParts : ArrayPartsType {
 template <typename TypeConversion>
 class ArrayParser : public PostgresParser<typename TypeConversion::output_type> {
 
+protected:
+    /**
+     * \brief length of the string to be parsed
+     *
+     * We store this in a special variable to reduce the number of calls of string::size().
+     */
+    size_t m_max_length;
+
     /// shortcut
     using postgres_parser_type = PostgresParser<typename TypeConversion::output_type>;
 
@@ -83,14 +91,77 @@ class ArrayParser : public PostgresParser<typename TypeConversion::output_type> 
         throw std::runtime_error(message);
     }
 
+    /**
+     * \brief Build the string which will be returned by get_next().
+     *
+     * This method goes from a given position to another given position over the string representation of the
+     * array and copies it to a new string.
+     *
+     * This is much faster than calling std::string::push_back(char) at evey character which is not escaped during
+     * parsing the array character by character. If we used push_back(char), we would std::string::reserve() to often.
+     * This implementation (remove_escape_sequences) reserves the necessary amount of memory at the beginning (usually
+     * a few bytes more than necessary).
+     *
+     * \param source source string to copy from
+     * \param start first character to be copied
+     * \param end last character to be copied
+     *
+     * \returns array element as string without surrounding double quotes
+     *
+     * \throws std::runtime_error in the case of invalid escape sequences
+     */
+    std::string remove_escape_sequences(const std::string& source, const size_t start, const size_t end) {
+        if (start > end) { // indicator for an empty string as array element
+            return "";
+        }
+        std::string result (end - start + 1, '\0'); // initial fill because we know the maximum size
+        size_t current_position_result = 0;
+        size_t current_position_src = start;
+        bool backslashes_before = false;
+
+        while (current_position_result <= end - start) {
+            if (backslashes_before) {
+                // Handling of escaped characters. Elements containing escape sequences must be surrounded by double quotes.
+                switch (source.at(current_position_src)) {
+                case '"':
+                    result.at(current_position_result) = '"';
+                    backslashes_before = false;
+                    current_position_result++;
+                    break;
+                case '\\':
+                    result.at(current_position_result) = '\\';
+                    backslashes_before = false;
+                    current_position_result++;
+                    break;
+                default:
+                    invalid_syntax("is no valid escape sequence in a hstore key or value.");
+                }
+            } else {
+                switch (source.at(current_position_src)) {
+                case '\\':
+                    backslashes_before = true;
+                    break;
+                default:
+                    result.at(current_position_result) = source.at(current_position_src);
+                    current_position_result++;
+                }
+            }
+            current_position_src++;
+        }
+        result.resize(current_position_result);
+        return result;
+    }
+
 public:
-    ArrayParser(std::string& string_repr) : PostgresParser<typename TypeConversion::output_type>(string_repr) {};
+    ArrayParser(std::string& string_repr) : PostgresParser<typename TypeConversion::output_type>(string_repr) {
+        m_max_length = string_repr.length();
+    };
 
     /**
      * \brief Has the parser reached the end of the hstore?
      */
     bool has_next() {
-        if (m_current_position >= postgres_parser_type::m_string_repr.size() - 1) {
+        if (m_current_position >= m_max_length - 1) {
             // We have reached the last character which is a '}'.
             return false;
         }
@@ -109,19 +180,21 @@ public:
      * the word NULL. Double quotes and backslashes embedded in element values will be backslash-escaped.
      */
     typename TypeConversion::output_type get_next() {
-        std::string to_convert;
         m_parse_progress = ArrayParts::NONE;
         bool backslashes_before = false; // counts preceding backslashes
         bool quoted_element = false; // track if the key/value is surrounded by quotation marks
-        while (m_parse_progress != ArrayParts::END && m_current_position < postgres_parser_type::m_string_repr.size()) {
+        size_t start = 0;
+        size_t end = 0;
+        while (m_parse_progress != ArrayParts::END && m_current_position < m_max_length) {
             if (m_parse_progress == ArrayParts::NONE) {
                 if (postgres_parser_type::m_string_repr.at(m_current_position) == '"') {
                     quoted_element = true;
+                    start = m_current_position + 1;
                     m_parse_progress = ArrayParts::ELEMENT;
                 } else if (postgres_parser_type::m_string_repr.at(m_current_position) != ','
                         && postgres_parser_type::m_string_repr.at(m_current_position) != ' '){
                     m_parse_progress = ArrayParts::ELEMENT;
-                    to_convert.push_back(postgres_parser_type::m_string_repr.at(m_current_position));
+                    start = m_current_position;
                 }
             } else if (m_parse_progress == ArrayParts::ELEMENT && quoted_element) {
                 // Handling of array elements surrounded by double quotes
@@ -129,11 +202,7 @@ public:
                     // Handling of escaped characters. Elements containing escape sequences must be surrounded by double quotes.
                     switch (postgres_parser_type::m_string_repr.at(m_current_position)) {
                     case '"':
-                        to_convert.push_back('"');
-                        backslashes_before = false;
-                        break;
                     case '\\':
-                        to_convert.push_back('\\');
                         backslashes_before = false;
                         break;
                     default:
@@ -142,27 +211,30 @@ public:
                 } else if (postgres_parser_type::m_string_repr.at(m_current_position) == '\\') {
                     backslashes_before = true;
                 } else if (postgres_parser_type::m_string_repr.at(m_current_position) == '"') {
+                    end = m_current_position - 1;
                     m_parse_progress = ArrayParts::END;
                 } else {
-                    to_convert.push_back(postgres_parser_type::m_string_repr.at(m_current_position));
                 }
             } else if (m_parse_progress == ArrayParts::ELEMENT && !quoted_element) {
                 // Handling of array elements not surrounded by double quotes
                 switch (postgres_parser_type::m_string_repr.at(m_current_position)) {
                 case ' ':
+                    end = m_current_position - 1;
                     // We will go on until we reach the comma. Therefore, we ignore this space and don't report a syntax error
                     // if there is a space in an array element which is not surrounded by double quotes.
                     break;
                 case ',':
                 case '}':
+                    if (end == 0) { // end has still its default value
+                        end = m_current_position - 1;
+                    }
                     m_parse_progress = ArrayParts::END;
                     break;
-                default:
-                    to_convert.push_back(postgres_parser_type::m_string_repr.at(m_current_position));
                 }
             }
             m_current_position++;
         }
+        std::string to_convert = remove_escape_sequences(postgres_parser_type::m_string_repr, start, end);
         if (!quoted_element && to_convert == "NULL") {
             return m_type_conversion.return_null_value();
         }
