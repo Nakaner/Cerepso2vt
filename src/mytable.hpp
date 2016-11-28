@@ -67,7 +67,7 @@ private:
      * \param member_ids reference to a location handler which contains the string representation of the array from member_ids column
      */
     void add_relation_members(osmium::memory::Buffer& relation_buffer, osmium::builder::RelationBuilder* relation_builder,
-            std::string& member_types, std::string& member_ids);
+            std::string& member_types, std::string& member_ids, std::string& member_roles);
 
     /**
      * \brief helper method to build an array of bbox parameters
@@ -109,16 +109,15 @@ public:
     void get_ways_inside(osmium::memory::Buffer& ways_buffer, BoundingBox& bbox, location_handler_type& location_handler,
             std::set<osmium::object_id_type>& missing_nodes);
 
-    // This does not work yet. You cannot use ST_INTERSECTS with GeometryCollection.
-//    /**
-//     * \brief Get all ways inside the tile
-//     *
-//     * \param ways_buffer buffer where to write the ways
-//     * \param bbox bounding box specifying the extend of the tile (including a buffer around its edges)
-//     *
-//     * \throws std::runtime_error
-//     */
-//    void get_relations_inside(osmium::memory::Buffer& relations_buffer, BoundingBox& bbox);
+    /**
+     * \brief Get all ways inside the tile
+     *
+     * \param ways_buffer buffer where to write the ways
+     * \param bbox bounding box specifying the extend of the tile (including a buffer around its edges)
+     *
+     * \throws std::runtime_error
+     */
+    void get_relations_inside(osmium::memory::Buffer& relations_buffer, BoundingBox& bbox);
 };
 
 

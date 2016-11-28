@@ -63,11 +63,10 @@ private:
      */
     void get_ways_inside();
 
-    // This does not work yet. You cannot use ST_INTERSECTS with GeometryCollection.
-//    /**
-//     * get relations intersecting this tile
-//     */
-//    void get_relations_inside();
+    /**
+     * get relations intersecting this tile
+     */
+    void get_relations_inside();
 
     /**
      * get all ways which are reference but have not been satisfied yet
