@@ -35,6 +35,8 @@ private:
 
     index_type m_index; // necessary for m_location_handler
     location_handler_type m_location_handler;
+    std::set<osmium::object_id_type> m_ways_got;
+    std::set<osmium::object_id_type> m_relations_got;
 
     /// list of nodes not retrieved by a spatial query but which are necessary to build the ways
     std::set<osmium::object_id_type> m_missing_nodes;

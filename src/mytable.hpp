@@ -64,10 +64,20 @@ private:
      * \param relation_buffer buffer where the relation resides
      * \param relation_builder pointer to the RelationBuilder which builds the relation
      * \param member_types reference to the string which contains the string representation of the array from member_types column
-     * \param member_ids reference to a location handler which contains the string representation of the array from member_ids column
+     * \param member_ids reference to the string which contains the string representation of the array from member_ids column
+     * \param member_roles reference to the string which contains the string representation of the array from member_roles column
+     * \param location_handler reference to the location handler
+     * \param missing_nodes reference to a set where node IDs are stored which have not been retrieved from the database yet
+     * \param missing_ways dto. for ways
+     * \param missing_relations dto. for relations
+     * \param ways_got reference to a set where way IDs are stored which have been retrieved from the database yet
+     * \param relations_ot dto. for relations
      */
     void add_relation_members(osmium::memory::Buffer& relation_buffer, osmium::builder::RelationBuilder* relation_builder,
-            std::string& member_types, std::string& member_ids, std::string& member_roles);
+            std::string& member_types, std::string& member_ids, std::string& member_roles, location_handler_type& location_handler,
+            std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
+            std::set<osmium::object_id_type>& missing_relations, std::set<osmium::object_id_type>& ways_got,
+            std::set<osmium::object_id_type>& relations_got);
 
     /**
      * \brief helper method to build an array of bbox parameters
@@ -76,6 +86,17 @@ private:
      * \param params_array (size == 4) array to be filled with the parameters derived from bbox argument
      */
     void build_bbox_query_params(BoundingBox& bbox, char** const params_array);
+
+    /**
+     * \brief check if a node is available in the location handler and insert it into the list of missing nodes if it is not
+     * available in the location handler
+     *
+     * \param location_handler location handler
+     * \param missing_nodes list of missing nodes
+     * \param id ID of the node
+     */
+    void check_node_availability(location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes,
+            const osmium::object_id_type id);
 
 public:
     MyTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns) :
@@ -96,6 +117,16 @@ public:
             BoundingBox& bbox);
 
     /**
+     * \brief Get all missing nodes
+     *
+     * \param node_buffer buffer where to write the nodes
+     * \param missing_nodes nodes to be fetched from the database
+     *
+     * \throws std::runtime_error
+     */
+    void get_missing_nodes(osmium::memory::Buffer& node_buffer, std::set<osmium::object_id_type>& missing_nodes);
+
+    /**
      * \brief Get all ways inside the tile
      *
      * \param ways_buffer buffer where to write the ways
@@ -103,11 +134,12 @@ public:
      * \param location_handler reference to a location handler which is used to look up if a node referenced by a way was retrieved by
      *        the spatial node queries
      * \param missing_nodes set where to add all nodes which are not available
+     * \param ways_got set where the IDs of all ways returned by the database queries will be stored
      *
      * \throws std::runtime_error
      */
     void get_ways_inside(osmium::memory::Buffer& ways_buffer, BoundingBox& bbox, location_handler_type& location_handler,
-            std::set<osmium::object_id_type>& missing_nodes);
+            std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& ways_got);
 
     /**
      * \brief Get all ways inside the tile
@@ -117,7 +149,10 @@ public:
      *
      * \throws std::runtime_error
      */
-    void get_relations_inside(osmium::memory::Buffer& relations_buffer, BoundingBox& bbox);
+    void get_relations_inside(osmium::memory::Buffer& relations_buffer, BoundingBox& bbox, location_handler_type& location_handler,
+            std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
+            std::set<osmium::object_id_type>& missing_relations, std::set<osmium::object_id_type>& ways_got,
+            std::set<osmium::object_id_type>& relations_got);
 };
 
 
