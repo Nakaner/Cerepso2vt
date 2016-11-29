@@ -53,7 +53,9 @@ void HStoreParser::invalid_syntax(std::string error) {
 }
 
 bool HStoreParser::has_next() {
-    if (m_current_position > m_string_repr.size() - MIN_KV_PAIR_LENGTH) {
+    // m_current_position >= m_string_repr.size() is necessary for empty hstores because m_current_position and
+    // m_string_repr.size() are unsigned.
+    if (m_current_position > m_string_repr.size() - MIN_KV_PAIR_LENGTH || m_current_position >= m_string_repr.size()) {
         return false;
     }
     return true;
