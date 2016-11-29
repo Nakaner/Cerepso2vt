@@ -34,23 +34,24 @@ void MyTable::add_node_refs(osmium::memory::Buffer& ways_buffer, osmium::builder
         // having to change it here, too.
         Int64Conversion::output_type node_ref = array_parser.get_next();
         wnl_builder.add_node_ref(osmium::NodeRef(node_ref, osmium::Location()));
-        check_node_availability(location_handler, missing_nodes, node_ref);
+        check_node_availability(location_handler, &missing_nodes, node_ref);
     }
 }
 
-void MyTable::check_node_availability(location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes,
+void MyTable::check_node_availability(location_handler_type& location_handler, std::set<osmium::object_id_type>* missing_nodes,
         const osmium::object_id_type id) {
+    assert(missing_nodes);
     try {
         osmium::Location location = location_handler.get_node_location(id);
     } catch (osmium::not_found& e) {
         // This exception is thrown if the node could not be found in the location handler.
-        missing_nodes.insert(id);
+        missing_nodes->insert(id);
     }
 }
 
 void MyTable::add_relation_members(osmium::memory::Buffer& relation_buffer, osmium::builder::RelationBuilder* relation_builder,
         std::string& member_types, std::string& member_ids, std::string& member_roles, location_handler_type& location_handler,
-        std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
+        std::set<osmium::object_id_type>* missing_nodes, std::set<osmium::object_id_type>& missing_ways,
         std::set<osmium::object_id_type>* missing_relations, std::set<osmium::object_id_type>& ways_got,
         std::set<osmium::object_id_type>* relations_got) {
     osmium::builder::RelationMemberListBuilder rml_builder(relation_buffer, relation_builder);
@@ -62,9 +63,9 @@ void MyTable::add_relation_members(osmium::memory::Buffer& relation_buffer, osmi
         Int64Conversion::output_type id = array_parser_ids.get_next();
         StringConversion::output_type role = array_parser_roles.get_next();
         rml_builder.add_member(type, id, role.c_str());
-        if (type == osmium::item_type::node) {
+        if (type == osmium::item_type::node && missing_nodes) {
             check_node_availability(location_handler, missing_nodes, id);
-        } else if (type == osmium::item_type::way) {
+        } else if (type == osmium::item_type::way && m_config.m_recurse_ways) {
             std::set<osmium::object_id_type>::iterator ways_it = ways_got.find(id);
             if (ways_it == ways_got.end()) {
                 missing_ways.insert(id);
@@ -327,7 +328,7 @@ void MyTable::get_relations_inside(osmium::memory::Buffer& relations_buffer, Bou
         relation_builder.set_user("");
         add_tags(relations_buffer, &relation_builder, tags_hstore);
         add_relation_members(relations_buffer, &relation_builder, member_types, member_ids, member_roles, location_handler,
-                missing_nodes, missing_ways, &missing_relations, ways_got, &relations_got);
+                &missing_nodes, missing_ways, &missing_relations, ways_got, &relations_got);
     }
     PQclear(result);
     relations_buffer.commit();
@@ -336,7 +337,7 @@ void MyTable::get_relations_inside(osmium::memory::Buffer& relations_buffer, Bou
 
 void MyTable::get_missing_relations(osmium::memory::Buffer& relation_buffer, std::set<osmium::object_id_type>& missing_relations,
         std::set<osmium::object_id_type>& missing_ways, std::set<osmium::object_id_type>& ways_got,
-        location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes) {
+        location_handler_type& location_handler, std::set<osmium::object_id_type>* missing_nodes) {
     assert(m_database_connection);
     assert(m_columns.get_type() == postgres_drivers::TableType::RELATION_OTHER);
     for (auto id : missing_relations) {

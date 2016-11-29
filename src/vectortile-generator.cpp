@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     // database related configuration is stored in a separate struct because it is defined by our Postgres access library
     postgres_drivers::Config pg_driver_config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:", long_options, 0);
+        int c = getopt_long(argc, argv, "d:rwn", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -38,6 +38,15 @@ int main(int argc, char* argv[]) {
         switch (c) {
             case 'd':
                 pg_driver_config.m_database_name = optarg;
+                break;
+            case 'r':
+                config.m_recurse_relations = true;
+                break;
+            case 'w':
+                config.m_recurse_ways = true;
+                break;
+            case 'n':
+                config.m_recurse_nodes = true;
                 break;
             default:
                 exit(1);
@@ -47,7 +56,16 @@ int main(int argc, char* argv[]) {
     int remaining_args = argc - optind;
     if (remaining_args != 4) {
         std::cerr << "Usage: " << argv[0] << " [OPTIONS] [X] [Y] [Z] [OUTFILE]\n" \
-        "  -d, --database-name              database name\n" << std::endl;
+        "  -d, --database-name              database name\n" \
+        "  -r, --recurse-relations          write relations to the output file which are\n" \
+        "                                   referenced by other relations\n" \
+        "  -w, --recurse-ways               write ways to the output file which are beyond\n" \
+        "                                   the bounding box of the tile and referenced\n" \
+        "                                   by a relation\n" \
+        "  -n, --recurse-nodes              write nodes to the output file which are beyond\n" \
+        "                                   the bounding box of the tile and referenced\n" \
+        "                                   by a relation\n" \
+        "The output format is detected automatically based on the suffix of the output file."<< std::endl;
         exit(1);
     } else {
         config.m_x = atoi(argv[optind]);
@@ -63,13 +81,13 @@ int main(int argc, char* argv[]) {
     postgres_drivers::Columns relation_other_columns(pg_driver_config, postgres_drivers::TableType::RELATION_OTHER);
 
     // intialize connection to database tables
-    MyTable nodes_table ("nodes", pg_driver_config, node_columns);
-    MyTable untagged_nodes_table ("untagged_nodes", pg_driver_config, untagged_nodes_columns);
-    MyTable ways_linear_table ("ways", pg_driver_config, way_linear_columns);
-    MyTable relations_table("relations", pg_driver_config, relation_other_columns);
+    MyTable nodes_table ("nodes", pg_driver_config, node_columns, config);
+    MyTable untagged_nodes_table ("untagged_nodes", pg_driver_config, untagged_nodes_columns, config);
+    MyTable ways_linear_table ("ways", pg_driver_config, way_linear_columns, config);
+    MyTable relations_table("relations", pg_driver_config, relation_other_columns, config);
 
-    VectorTile vector_tile (config.m_x, config.m_y, config.m_zoom, nodes_table, untagged_nodes_table,
-            ways_linear_table, relations_table, config.m_output_file);
+    VectorTile vector_tile (config, nodes_table, untagged_nodes_table,
+            ways_linear_table, relations_table);
     vector_tile.generate_vectortile();
 }
 

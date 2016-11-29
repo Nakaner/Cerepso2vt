@@ -18,6 +18,7 @@
 #include <osmium/builder/osm_object_builder.hpp>
 #include <table.hpp>
 #include "bounding_box.hpp"
+#include "vectortile_generator_config.hpp"
 
 using TagVector = std::vector<std::string, std::string>;
 
@@ -29,6 +30,9 @@ using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
  */
 class MyTable : public postgres_drivers::Table {
 private:
+    /// reference to the program configuration
+    VectortileGeneratorConfig& m_config;
+
     /**
      * create all necessary prepared statements for this table
      *
@@ -67,9 +71,12 @@ private:
      * \param member_ids reference to the string which contains the string representation of the array from member_ids column
      * \param member_roles reference to the string which contains the string representation of the array from member_roles column
      * \param location_handler reference to the location handler
-     * \param missing_nodes reference to a set where node IDs are stored which have not been retrieved from the database yet
-     * \param missing_ways dto. for ways
-     * \param missing_relations dto. for relations
+     * \param missing_nodes Pointer to a set where node IDs are stored which have not been retrieved from the database yet.
+     *        Use a nullptr if you don't want that the vectortile generator checks if all referenced nodes are already in the buffer.
+     * \param missing_ways Reference to a set where node IDs are stored which have not been retrieved from the database yet.
+     * \param missing_relations Pointer to a set where relation IDs are stored which have not been retrieved from the database yet.
+     *        Use a nullptr if you don't want that the vectortile generator checks if all referenced relations are already
+     *        in the buffer.
      * \param ways_got reference to a set where way IDs are stored which have been retrieved from the database yet
      * \param relations_got dto. for relations
      *
@@ -78,7 +85,7 @@ private:
      */
     void add_relation_members(osmium::memory::Buffer& relation_buffer, osmium::builder::RelationBuilder* relation_builder,
             std::string& member_types, std::string& member_ids, std::string& member_roles, location_handler_type& location_handler,
-            std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
+            std::set<osmium::object_id_type>* missing_nodes, std::set<osmium::object_id_type>& missing_ways,
             std::set<osmium::object_id_type>* missing_relations, std::set<osmium::object_id_type>& ways_got,
             std::set<osmium::object_id_type>* relations_got);
 
@@ -95,15 +102,17 @@ private:
      * available in the location handler
      *
      * \param location_handler location handler
-     * \param missing_nodes list of missing nodes
+     * \param missing_nodes list of missing nodes, should not be a nullptr
      * \param id ID of the node
      */
-    void check_node_availability(location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes,
+    void check_node_availability(location_handler_type& location_handler, std::set<osmium::object_id_type>* missing_nodes,
             const osmium::object_id_type id);
 
 public:
-    MyTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns) :
-            postgres_drivers::Table(table_name, config, columns) {
+    MyTable(const char* table_name, postgres_drivers::Config& table_config, postgres_drivers::Columns& columns,
+            VectortileGeneratorConfig& config) :
+            postgres_drivers::Table(table_name, table_config, columns),
+            m_config(config) {
         create_prepared_statements();
     };
 
@@ -158,10 +167,17 @@ public:
             location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes);
 
     /**
-     * \brief Get all ways inside the tile
+     * \brief Get all relations inside the tile
      *
-     * \param ways_buffer buffer where to write the ways
+     * \param relations_buffer buffer where to write the relations
      * \param bbox bounding box specifying the extend of the tile (including a buffer around its edges)
+     * \param location_handler location_handler which will manage the locations of the nodes we have already fetched from
+     *        the database. We will use it to check if a node is already in the output buffer.
+     * \param missing_nodes Set where IDs of nodes will be written which have to be fetched from the database in a later step.
+     * \param missing_ways Set where IDs of ways will be written which have to be fetched from the database in a later step.
+     * \param missing_relations Set where IDs of relations will be written which have to be fetched from the database in a later step.
+     * \param ways_got Set where IDs of ways are stored which have been written to the output buffer before.
+     * \param relations_got Set where IDs of all written relations are stored.
      *
      * \throws std::runtime_error
      */
@@ -178,13 +194,14 @@ public:
      * \param ways_got ways which have already been fetched from the database
      * \param location_handler location handler managing node locations
      * \param missing_nodes list of nodes to be fetched from the database. This method will add all nodes which
-     * are referenced by missing ways and have not been retrieved yet from the database.
+     *        are referenced by missing ways and have not been retrieved yet from the database. Use a nullptr if you
+     *        don't want that this program checks if all referenced nodes are already in the buffer.
      *
      * \throws std::runtime_error
      */
     void get_missing_relations(osmium::memory::Buffer& relation_buffer, std::set<osmium::object_id_type>& missing_relations,
             std::set<osmium::object_id_type>& missing_ways, std::set<osmium::object_id_type>& ways_got,
-            location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes);
+            location_handler_type& location_handler, std::set<osmium::object_id_type>* missing_nodes);
 };
 
 

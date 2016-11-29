@@ -4,34 +4,28 @@
  *  Created on: 13.10.2016
  *      Author: michael
  */
+#include <osmium/geom/projection.hpp>
 #include <osmium/io/any_output.hpp>
 #include <osmium/io/file.hpp>
-#include <osmium/io/writer.hpp>
-#include <osmium/geom/projection.hpp>
+#include <osmium/io/output_iterator.hpp>
+#include <osmium/object_pointer_collection.hpp>
+#include <osmium/osm/object_comparisons.hpp>
 #include "vector_tile.hpp"
 
 const double EARTH_CIRCUMFERENCE = 40075016.68;
 
-VectorTile::VectorTile(int x, int y, int zoom, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
-        MyTable& relations_table, std::string& destination_path) :
-        m_x(x),
-        m_y(y),
-        m_zoom(zoom),
+VectorTile::VectorTile(VectortileGeneratorConfig& config, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
+        MyTable& relations_table) :
+        m_config(config),
         m_untagged_nodes_table(untagged_nodes_table),
         m_nodes_table(nodes_table),
         m_ways_table(ways_table),
         m_relations_table(relations_table),
-        m_destination_path(destination_path),
-        m_nodes_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
-        m_ways_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
-        m_relations_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
-        m_additional_nodes_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
-        m_additional_ways_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
-        m_additional_relations_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
+        m_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
         m_location_handler(m_index) {
-    int map_width = 1 << zoom;
-    double tile_x_merc = tile_x_to_merc(x, map_width);
-    double tile_y_merc = tile_y_to_merc(y, map_width);
+    int map_width = 1 << config.m_zoom;
+    double tile_x_merc = tile_x_to_merc(config.m_x, map_width);
+    double tile_y_merc = tile_y_to_merc(config.m_y, map_width);
 
     double tile_width_merc = EARTH_CIRCUMFERENCE / map_width;
     double buffer = 0.2 * tile_width_merc;
@@ -46,30 +40,36 @@ VectorTile::VectorTile(int x, int y, int zoom, MyTable& untagged_nodes_table, My
 }
 
 void VectorTile::get_nodes_inside() {
-    m_nodes_table.get_nodes_inside(m_nodes_buffer, m_location_handler, m_bbox);
-    m_untagged_nodes_table.get_nodes_inside(m_nodes_buffer, m_location_handler, m_bbox);
+    m_nodes_table.get_nodes_inside(m_buffer, m_location_handler, m_bbox);
+    m_untagged_nodes_table.get_nodes_inside(m_buffer, m_location_handler, m_bbox);
 }
 
 void VectorTile::get_missing_nodes() {
-    m_nodes_table.get_missing_nodes(m_nodes_buffer, m_missing_nodes);
-    m_untagged_nodes_table.get_missing_nodes(m_nodes_buffer, m_missing_nodes);
+    m_nodes_table.get_missing_nodes(m_buffer, m_missing_nodes);
+    m_untagged_nodes_table.get_missing_nodes(m_buffer, m_missing_nodes);
 }
 
 void VectorTile::get_missing_ways() {
-    m_ways_table.get_missing_ways(m_ways_buffer, m_missing_ways, m_location_handler, m_missing_nodes);
+    m_ways_table.get_missing_ways(m_buffer, m_missing_ways, m_location_handler, m_missing_nodes);
 }
 
 void VectorTile::get_ways_inside() {
-    m_ways_table.get_ways_inside(m_ways_buffer, m_bbox, m_location_handler, m_missing_nodes, m_ways_got);
+    m_ways_table.get_ways_inside(m_buffer, m_bbox, m_location_handler, m_missing_nodes, m_ways_got);
 }
 
 void VectorTile::get_relations_inside() {
-    m_relations_table.get_relations_inside(m_relations_buffer, m_bbox, m_location_handler, m_missing_nodes, m_missing_ways,
+    m_relations_table.get_relations_inside(m_buffer, m_bbox, m_location_handler, m_missing_nodes, m_missing_ways,
             m_missing_relations, m_ways_got, m_relations_got);
 }
 
 void VectorTile::get_missing_relations() {
-    m_relations_table.get_missing_relations(m_relations_buffer, m_missing_relations, m_ways_got, m_missing_ways, m_location_handler, m_missing_nodes);
+    if (m_config.m_recurse_nodes) {
+        m_relations_table.get_missing_relations(m_buffer, m_missing_relations, m_ways_got, m_missing_ways,
+                m_location_handler, &m_missing_nodes);
+    } else {
+        m_relations_table.get_missing_relations(m_buffer, m_missing_relations, m_ways_got, m_missing_ways,
+                m_location_handler, nullptr);
+    }
 }
 
 void VectorTile::generate_vectortile() {
@@ -77,10 +77,22 @@ void VectorTile::generate_vectortile() {
     get_ways_inside();
     get_relations_inside();
 
-    get_missing_relations();
-    get_missing_ways();
+    if (m_config.m_recurse_relations) {
+        get_missing_relations();
+    }
+    if (m_config.m_recurse_ways) {
+        get_missing_ways();
+    }
     get_missing_nodes();
     write_file();
+}
+
+/*static*/ void VectorTile::sort_buffer_and_write_it(osmium::memory::Buffer& buffer, osmium::io::Writer& writer) {
+    auto out = osmium::io::make_output_iterator(writer);
+    osmium::ObjectPointerCollection objects;
+    osmium::apply(buffer, objects);
+    objects.sort(osmium::object_order_type_id_reverse_version());
+    std::unique_copy(objects.cbegin(), objects.cend(), out, osmium::object_equal_type_id());
 }
 
 void VectorTile::write_file() {
@@ -89,18 +101,18 @@ void VectorTile::write_file() {
     header.set("copyright", "OpenStreetMap and contributors");
     header.set("attribution", "http://www.openstreetmap.org/copyright");
     header.set("license", "http://opendatacommons.org/licenses/odbl/1-0/");
-    osmium::io::File output_file{m_destination_path};
+    osmium::io::File output_file{m_config.m_output_file};
     osmium::io::Writer writer{output_file, header};
-    writer(std::move(m_nodes_buffer));
-    writer(std::move(m_ways_buffer));
-    writer(std::move(m_relations_buffer));
+    // We have to merge the buffers and sort the objects. Therefore first all nodes are written, then all ways and as last step
+    // all relations.
+    sort_buffer_and_write_it(m_buffer, writer);
     writer.close();
 }
 
-/* static */ double VectorTile::tile_x_to_merc(double tile_x, int map_width) {
+/* static */ double VectorTile::tile_x_to_merc(const double tile_x, const int map_width) {
     return EARTH_CIRCUMFERENCE * ((tile_x/map_width) - 0.5);
 }
 
-/* static */ double VectorTile::tile_y_to_merc(double tile_y, int map_width) {
+/* static */ double VectorTile::tile_y_to_merc(const double tile_y, const int map_width) {
     return EARTH_CIRCUMFERENCE * (0.5 - tile_y/map_width);
 }
