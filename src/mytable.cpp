@@ -51,8 +51,8 @@ void MyTable::check_node_availability(location_handler_type& location_handler, s
 void MyTable::add_relation_members(osmium::memory::Buffer& relation_buffer, osmium::builder::RelationBuilder* relation_builder,
         std::string& member_types, std::string& member_ids, std::string& member_roles, location_handler_type& location_handler,
         std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
-        std::set<osmium::object_id_type>& missing_relations, std::set<osmium::object_id_type>& ways_got,
-        std::set<osmium::object_id_type>& relations_got) {
+        std::set<osmium::object_id_type>* missing_relations, std::set<osmium::object_id_type>& ways_got,
+        std::set<osmium::object_id_type>* relations_got) {
     osmium::builder::RelationMemberListBuilder rml_builder(relation_buffer, relation_builder);
     ArrayParser<ItemTypeConversion> array_parser_types(member_types);
     ArrayParser<Int64Conversion> array_parser_ids(member_ids);
@@ -62,26 +62,18 @@ void MyTable::add_relation_members(osmium::memory::Buffer& relation_buffer, osmi
         Int64Conversion::output_type id = array_parser_ids.get_next();
         StringConversion::output_type role = array_parser_roles.get_next();
         rml_builder.add_member(type, id, role.c_str());
-        switch (type) {
-        case osmium::item_type::node:
+        if (type == osmium::item_type::node) {
             check_node_availability(location_handler, missing_nodes, id);
-            break;
-        case osmium::item_type::way: {
+        } else if (type == osmium::item_type::way) {
             std::set<osmium::object_id_type>::iterator ways_it = ways_got.find(id);
             if (ways_it == ways_got.end()) {
                 missing_ways.insert(id);
             }
-            break;
-        }
-        case osmium::item_type::relation: {
-            std::set<osmium::object_id_type>::iterator relations_it = relations_got.find(id);
-            if (relations_it == relations_got.end()) {
-                missing_relations.insert(id);
+        } else if (type == osmium::item_type::relation && missing_relations && relations_got) {
+            std::set<osmium::object_id_type>::iterator relations_it = relations_got->find(id);
+            if (relations_it == relations_got->end()) {
+                missing_relations->insert(id);
             }
-            break;
-        }
-        default:
-            break;
         }
     }
 }
@@ -179,8 +171,7 @@ void MyTable::get_missing_nodes(osmium::memory::Buffer& node_buffer, std::set<os
             PQclear(result);
             continue;
         }
-        int tuple_count = PQntuples(result);
-        if (tuple_count != 1) { // node not found
+        if (PQntuples(result) != 1) { // node not found
             PQclear(result);
             continue;
         }
@@ -257,6 +248,43 @@ void MyTable::get_ways_inside(osmium::memory::Buffer& ways_buffer, BoundingBox& 
     delete_array_elements(paramValues, 4);
 }
 
+void MyTable::get_missing_ways(osmium::memory::Buffer& way_buffer, std::set<osmium::object_id_type>& missing_ways,
+        location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes) {
+    assert(m_database_connection);
+    assert(m_columns.get_type() == postgres_drivers::TableType::WAYS_LINEAR);
+    for (auto id : missing_ways) {
+        char* param_values[1];
+        char param[25];
+        sprintf(param, "%ld", id);
+        param_values[0] = param;
+        PGresult *result = PQexecPrepared(m_database_connection, "get_single_way", 1, param_values, nullptr, nullptr, 0);
+        if ((PQresultStatus(result) != PGRES_COMMAND_OK) && (PQresultStatus(result) != PGRES_TUPLES_OK)) {
+            throw std::runtime_error((boost::format("Failed: %1%\n") % PQresultErrorMessage(result)).str());
+            PQclear(result);
+            continue;
+        }
+        if (PQntuples(result) != 1) { // node not found
+            PQclear(result);
+            continue;
+        }
+        std::string tags_hstore = PQgetvalue(result, 0, 0);
+        std::string way_nodes = PQgetvalue(result, 0, 5);
+        osmium::builder::WayBuilder way_builder(way_buffer);
+        osmium::Way& way = static_cast<osmium::Way&>(way_builder.object());
+        way.set_id(id);
+        way.set_changeset(PQgetvalue(result, 0, 4));
+        way.set_uid(PQgetvalue(result, 0, 1));
+        way.set_version(PQgetvalue(result, 0, 2));
+        way.set_visible(true);
+        way.set_timestamp(PQgetvalue(result, 0, 3));
+        way_builder.set_user("");
+        add_tags(way_buffer, &way_builder, tags_hstore);
+        add_node_refs(way_buffer, &way_builder, way_nodes, location_handler, missing_nodes);
+        PQclear(result);
+    }
+    way_buffer.commit();
+}
+
 void MyTable::get_relations_inside(osmium::memory::Buffer& relations_buffer, BoundingBox& bbox, location_handler_type& location_handler,
         std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
         std::set<osmium::object_id_type>& missing_relations, std::set<osmium::object_id_type>& ways_got,
@@ -299,11 +327,52 @@ void MyTable::get_relations_inside(osmium::memory::Buffer& relations_buffer, Bou
         relation_builder.set_user("");
         add_tags(relations_buffer, &relation_builder, tags_hstore);
         add_relation_members(relations_buffer, &relation_builder, member_types, member_ids, member_roles, location_handler,
-                missing_nodes, missing_ways, missing_relations, ways_got, relations_got);
+                missing_nodes, missing_ways, &missing_relations, ways_got, &relations_got);
     }
     PQclear(result);
     relations_buffer.commit();
     delete_array_elements(paramValues, 4);
+}
+
+void MyTable::get_missing_relations(osmium::memory::Buffer& relation_buffer, std::set<osmium::object_id_type>& missing_relations,
+        std::set<osmium::object_id_type>& missing_ways, std::set<osmium::object_id_type>& ways_got,
+        location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes) {
+    assert(m_database_connection);
+    assert(m_columns.get_type() == postgres_drivers::TableType::RELATION_OTHER);
+    for (auto id : missing_relations) {
+        char* param_values[1];
+        char param[25];
+        sprintf(param, "%ld", id);
+        param_values[0] = param;
+        PGresult *result = PQexecPrepared(m_database_connection, "get_single_relation", 1, param_values, nullptr, nullptr, 0);
+        if ((PQresultStatus(result) != PGRES_COMMAND_OK) && (PQresultStatus(result) != PGRES_TUPLES_OK)) {
+            throw std::runtime_error((boost::format("Failed: %1%\n") % PQresultErrorMessage(result)).str());
+            PQclear(result);
+            continue;
+        }
+        if (PQntuples(result) != 1) { // node not found
+            PQclear(result);
+            continue;
+        }
+        std::string tags_hstore = PQgetvalue(result, 0, 0);
+        std::string member_ids = PQgetvalue(result, 0, 5);
+        std::string member_types = PQgetvalue(result, 0, 6);
+        std::string member_roles = PQgetvalue(result, 0, 7);
+        osmium::builder::RelationBuilder relation_builder(relation_buffer);
+        osmium::Relation& relation = static_cast<osmium::Relation&>(relation_builder.object());
+        relation.set_id(id);
+        relation.set_changeset(PQgetvalue(result, 0, 4));
+        relation.set_uid(PQgetvalue(result, 0, 1));
+        relation.set_version(PQgetvalue(result, 0, 2));
+        relation.set_visible(true);
+        relation.set_timestamp(PQgetvalue(result, 0, 3));
+        relation_builder.set_user("");
+        add_tags(relation_buffer, &relation_builder, tags_hstore);
+        add_relation_members(relation_buffer, &relation_builder, member_types, member_ids, member_roles, location_handler,
+                        missing_nodes, missing_ways, NULL, ways_got, NULL);
+        PQclear(result);
+    }
+    relation_buffer.commit();
 }
 
 void MyTable::create_prepared_statements() {
@@ -343,9 +412,10 @@ void MyTable::create_prepared_statements() {
                 "ST_MakeEnvelope($1, $2, $3, $4, 4326)) OR ST_INTERSECTS(geom_lines, ST_MakeEnvelope($1, $2, $3, $4, 4326))")
                 % m_name).str();
         create_prepared_statement("get_relations", query, 4);
-        query = (boost::format("SELECT tags, osm_id, osm_uid, osm_version, osm_lastmodified," \
-                " osm_changeset, member_ids, member_types, member_roles FROM %1% WHERE member_ids && $1::bigint[]") % m_name).str();
-        create_prepared_statement("get_relations_by_member_ids", query, 1);
+        query = (boost::format("SELECT tags, osm_uid, osm_version, osm_lastmodified," \
+                " osm_changeset, member_ids, member_types, member_roles FROM %1% WHERE osm_id = $1")
+                % m_name).str();
+        create_prepared_statement("get_single_relation", query, 4);
         break;
     default :
         throw std::runtime_error("unsupported table type");

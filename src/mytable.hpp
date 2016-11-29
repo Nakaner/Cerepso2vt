@@ -71,13 +71,16 @@ private:
      * \param missing_ways dto. for ways
      * \param missing_relations dto. for relations
      * \param ways_got reference to a set where way IDs are stored which have been retrieved from the database yet
-     * \param relations_ot dto. for relations
+     * \param relations_got dto. for relations
+     *
+     * The parameters missing_relations and relations_got are pointers because there are use cases where you do not want that
+     * items are added to these sets. If you don't want items to be added to them, give a nullptr to this method.
      */
     void add_relation_members(osmium::memory::Buffer& relation_buffer, osmium::builder::RelationBuilder* relation_builder,
             std::string& member_types, std::string& member_ids, std::string& member_roles, location_handler_type& location_handler,
             std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
-            std::set<osmium::object_id_type>& missing_relations, std::set<osmium::object_id_type>& ways_got,
-            std::set<osmium::object_id_type>& relations_got);
+            std::set<osmium::object_id_type>* missing_relations, std::set<osmium::object_id_type>& ways_got,
+            std::set<osmium::object_id_type>* relations_got);
 
     /**
      * \brief helper method to build an array of bbox parameters
@@ -140,6 +143,19 @@ public:
      */
     void get_ways_inside(osmium::memory::Buffer& ways_buffer, BoundingBox& bbox, location_handler_type& location_handler,
             std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& ways_got);
+    /**
+     * \brief Get all missing ways
+     *
+     * \param node_buffer buffer where to write the nodes
+     * \param missing_ways ways to be fetched from the database
+     * \param location_handler location handler managing node locations
+     * \param missing_nodes list of nodes to be fetched from the database. This method will add all nodes which
+     * are referenced by missing ways and have not been retrieved yet from the database.
+     *
+     * \throws std::runtime_error
+     */
+    void get_missing_ways(osmium::memory::Buffer& way_buffer, std::set<osmium::object_id_type>& missing_ways,
+            location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes);
 
     /**
      * \brief Get all ways inside the tile
@@ -153,6 +169,22 @@ public:
             std::set<osmium::object_id_type>& missing_nodes, std::set<osmium::object_id_type>& missing_ways,
             std::set<osmium::object_id_type>& missing_relations, std::set<osmium::object_id_type>& ways_got,
             std::set<osmium::object_id_type>& relations_got);
+    /**
+     * \brief Get all missing relations
+     *
+     * \param relation_buffer buffer where to write the nodes
+     * \param missing_relations relations to be fetched from the database
+     * \param missing_ways ways to be fetched from the database
+     * \param ways_got ways which have already been fetched from the database
+     * \param location_handler location handler managing node locations
+     * \param missing_nodes list of nodes to be fetched from the database. This method will add all nodes which
+     * are referenced by missing ways and have not been retrieved yet from the database.
+     *
+     * \throws std::runtime_error
+     */
+    void get_missing_relations(osmium::memory::Buffer& relation_buffer, std::set<osmium::object_id_type>& missing_relations,
+            std::set<osmium::object_id_type>& missing_ways, std::set<osmium::object_id_type>& ways_got,
+            location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes);
 };
 
 

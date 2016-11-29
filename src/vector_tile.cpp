@@ -55,6 +55,10 @@ void VectorTile::get_missing_nodes() {
     m_untagged_nodes_table.get_missing_nodes(m_nodes_buffer, m_missing_nodes);
 }
 
+void VectorTile::get_missing_ways() {
+    m_ways_table.get_missing_ways(m_ways_buffer, m_missing_ways, m_location_handler, m_missing_nodes);
+}
+
 void VectorTile::get_ways_inside() {
     m_ways_table.get_ways_inside(m_ways_buffer, m_bbox, m_location_handler, m_missing_nodes, m_ways_got);
 }
@@ -64,13 +68,17 @@ void VectorTile::get_relations_inside() {
             m_missing_relations, m_ways_got, m_relations_got);
 }
 
+void VectorTile::get_missing_relations() {
+    m_relations_table.get_missing_relations(m_relations_buffer, m_missing_relations, m_ways_got, m_missing_ways, m_location_handler, m_missing_nodes);
+}
+
 void VectorTile::generate_vectortile() {
     get_nodes_inside();
     get_ways_inside();
     get_relations_inside();
 
-//    get_missing_relations();
-//    get_missing_ways();
+    get_missing_relations();
+    get_missing_ways();
     get_missing_nodes();
     write_file();
 }

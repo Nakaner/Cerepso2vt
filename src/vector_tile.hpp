@@ -34,15 +34,21 @@ private:
     osmium::memory::Buffer m_additional_relations_buffer;
 
     index_type m_index; // necessary for m_location_handler
+    /// nodes we have already fetched from the database
     location_handler_type m_location_handler;
+    /// ways we have already fetched from the database
     std::set<osmium::object_id_type> m_ways_got;
+    /// relations we have already fetched from the database
     std::set<osmium::object_id_type> m_relations_got;
 
     /// list of nodes not retrieved by a spatial query but which are necessary to build the ways
     std::set<osmium::object_id_type> m_missing_nodes;
+    /// list of ways not retrieved by a spatial query but which are necessary to complete some relations
     std::set<osmium::object_id_type> m_missing_ways;
+    /// list of relations not retrieved by a spatial query but which are referenced by other relations
     std::set<osmium::object_id_type> m_missing_relations;
 
+    /// bounding box of the tile
     BoundingBox m_bbox;
 
     /**
@@ -69,6 +75,11 @@ private:
      * get relations intersecting this tile
      */
     void get_relations_inside();
+
+    /**
+     * get all relations which are reference but have not been satisfied yet
+     */
+    void get_missing_relations();
 
     /**
      * get all ways which are reference but have not been satisfied yet
