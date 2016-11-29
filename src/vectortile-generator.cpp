@@ -14,12 +14,6 @@
 #include "mytable.hpp"
 #include "vector_tile.hpp"
 
-
-//void add_rel_members(osmium::builder::RelationBuilder& builder, osmium::memory::Buffer& buffer) {
-//    osmium::builder::RelationMemberListBuilder rml_builder(buffer, &builder);
-//    rml_builder.add_member(osmium::item_type::way, 1, "forward");
-//}
-
 int main(int argc, char* argv[]) {
     static struct option long_options[] = {
             {"database",  required_argument, 0, 'd'},
