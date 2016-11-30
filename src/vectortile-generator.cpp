@@ -14,6 +14,27 @@
 #include "mytable.hpp"
 #include "vector_tile.hpp"
 
+/**
+ * \brief print program usage and terminate the program
+ *
+ * \param argv argument values (agrv argument of the main function)
+ */
+void print_usage(char* argv[]) {
+    std::cerr << "Usage: " << argv[0] << " [OPTIONS] [X] [Y] [Z] [OUTFILE]\n" \
+    "  -h, --help                       print help and exit\n" \
+    "  -d, --database-name              database name\n" \
+    "  -r, --recurse-relations          write relations to the output file which are\n" \
+    "                                   referenced by other relations\n" \
+    "  -w, --recurse-ways               write ways to the output file which are beyond\n" \
+    "                                   the bounding box of the tile and referenced\n" \
+    "                                   by a relation\n" \
+    "  -n, --recurse-nodes              write nodes to the output file which are beyond\n" \
+    "                                   the bounding box of the tile and referenced\n" \
+    "                                   by a relation\n" \
+    "The output format is detected automatically based on the suffix of the output file."<< std::endl;
+    exit(1);
+}
+
 int main(int argc, char* argv[]) {
     static struct option long_options[] = {
             {"database",  required_argument, 0, 'd'},
@@ -24,7 +45,7 @@ int main(int argc, char* argv[]) {
     // database related configuration is stored in a separate struct because it is defined by our Postgres access library
     postgres_drivers::Config pg_driver_config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:rwn", long_options, 0);
+        int c = getopt_long(argc, argv, "d:rwnh", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -42,25 +63,17 @@ int main(int argc, char* argv[]) {
             case 'n':
                 config.m_recurse_nodes = true;
                 break;
+            case 'h':
+                print_usage(argv);
+                break;
             default:
-                exit(1);
+                print_usage(argv);
         }
     }
 
     int remaining_args = argc - optind;
     if (remaining_args != 4) {
-        std::cerr << "Usage: " << argv[0] << " [OPTIONS] [X] [Y] [Z] [OUTFILE]\n" \
-        "  -d, --database-name              database name\n" \
-        "  -r, --recurse-relations          write relations to the output file which are\n" \
-        "                                   referenced by other relations\n" \
-        "  -w, --recurse-ways               write ways to the output file which are beyond\n" \
-        "                                   the bounding box of the tile and referenced\n" \
-        "                                   by a relation\n" \
-        "  -n, --recurse-nodes              write nodes to the output file which are beyond\n" \
-        "                                   the bounding box of the tile and referenced\n" \
-        "                                   by a relation\n" \
-        "The output format is detected automatically based on the suffix of the output file."<< std::endl;
-        exit(1);
+        print_usage(argv);
     } else {
         config.m_x = atoi(argv[optind]);
         config.m_y = atoi(argv[optind+1]);
