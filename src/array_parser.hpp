@@ -119,7 +119,7 @@ protected:
         size_t current_position_src = start;
         bool backslashes_before = false;
 
-        while (current_position_result <= end - start) {
+        while (current_position_result <= end - start && current_position_src <= end) {
             if (backslashes_before) {
                 // Handling of escaped characters. Elements containing escape sequences must be surrounded by double quotes.
                 switch (source.at(current_position_src)) {
