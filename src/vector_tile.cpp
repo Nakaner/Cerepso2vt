@@ -4,15 +4,12 @@
  *  Created on: 13.10.2016
  *      Author: michael
  */
-#include <osmium/geom/projection.hpp>
 #include <osmium/io/any_output.hpp>
 #include <osmium/io/file.hpp>
 #include <osmium/io/output_iterator.hpp>
 #include <osmium/object_pointer_collection.hpp>
 #include <osmium/osm/object_comparisons.hpp>
 #include "vector_tile.hpp"
-
-const double EARTH_CIRCUMFERENCE = 40075016.68;
 
 VectorTile::VectorTile(VectortileGeneratorConfig& config, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
         MyTable& relations_table) :
@@ -22,22 +19,21 @@ VectorTile::VectorTile(VectortileGeneratorConfig& config, MyTable& untagged_node
         m_ways_table(ways_table),
         m_relations_table(relations_table),
         m_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
-        m_location_handler(m_index) {
-    int map_width = 1 << config.m_zoom;
-    double tile_x_merc = tile_x_to_merc(config.m_x, map_width);
-    double tile_y_merc = tile_y_to_merc(config.m_y, map_width);
-
-    double tile_width_merc = EARTH_CIRCUMFERENCE / map_width;
-    double buffer = 0.2 * tile_width_merc;
-    const osmium::geom::CRS from_crs (3857);
-    const osmium::geom::CRS to_crs (4326);
-    osmium::geom::Coordinates south_west (tile_x_merc - buffer, tile_y_merc - tile_width_merc - buffer);
-    osmium::geom::Coordinates north_east (tile_x_merc + tile_width_merc + buffer, tile_y_merc + buffer);
-    south_west = osmium::geom::transform(from_crs, to_crs, south_west);
-    north_east = osmium::geom::transform(from_crs, to_crs, north_east);
-    // constructor has already been called before
-    m_bbox.convert_to_degree_and_set_coords(south_west, north_east);
+        m_location_handler(m_index),
+        m_bbox(config.m_x, config.m_y, config.m_zoom) {
+    std::cout << m_bbox.m_min_lon << " " << m_bbox.m_min_lat << " " << m_bbox.m_max_lon << " " << m_bbox.m_max_lat << "\n";
 }
+
+VectorTile::VectorTile(VectortileGeneratorConfig& config, BoundingBox& bbox, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
+        MyTable& relations_table) :
+        m_config(config),
+        m_untagged_nodes_table(untagged_nodes_table),
+        m_nodes_table(nodes_table),
+        m_ways_table(ways_table),
+        m_relations_table(relations_table),
+        m_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
+        m_location_handler(m_index),
+        m_bbox(bbox){ }
 
 void VectorTile::get_nodes_inside() {
     m_nodes_table.get_nodes_inside(m_buffer, m_location_handler, m_bbox);
@@ -111,12 +107,4 @@ void VectorTile::write_file() {
     // all relations.
     sort_buffer_and_write_it(m_buffer, writer);
     writer.close();
-}
-
-/* static */ double VectorTile::tile_x_to_merc(const double tile_x, const int map_width) {
-    return EARTH_CIRCUMFERENCE * ((tile_x/map_width) - 0.5);
-}
-
-/* static */ double VectorTile::tile_y_to_merc(const double tile_y, const int map_width) {
-    return EARTH_CIRCUMFERENCE * (0.5 - tile_y/map_width);
 }

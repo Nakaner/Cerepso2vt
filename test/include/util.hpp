@@ -49,6 +49,23 @@ namespace test_utils {
         }
         std::cerr << "}\n";
     }
+
+    /**
+     * \brief Check if a number is in a given interval (bounds belong to the interval)
+     *
+     * \param to_check variable to be checked
+     * \pararm min lower bound
+     * \param max upper bound
+     *
+     * \return true if to_check is between the bounds
+     */
+    template <class T>
+    bool in_interval(T to_check, T min, T max) {
+        if (to_check >= min && to_check <= max) {
+            return true;
+        }
+        return false;
+    }
 } // namespace test_utils
 
 

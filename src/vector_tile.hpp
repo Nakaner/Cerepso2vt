@@ -35,6 +35,10 @@ private:
     index_type m_index;
     /// nodes we have already fetched from the database
     location_handler_type m_location_handler;
+
+    /// bounding box of the tile
+    BoundingBox m_bbox;
+
     /// ways we have already fetched from the database
     std::set<osmium::object_id_type> m_ways_got;
     /// relations we have already fetched from the database
@@ -46,9 +50,6 @@ private:
     std::set<osmium::object_id_type> m_missing_ways;
     /// list of relations not retrieved by a spatial query but which are referenced by other relations
     std::set<osmium::object_id_type> m_missing_relations;
-
-    /// bounding box of the tile
-    BoundingBox m_bbox;
 
     /**
      * get relations intersecting this tile
@@ -98,33 +99,36 @@ private:
     void write_file();
 
 public:
+    /**
+     * \brief Constructor to be used if vectortile-generator should only generated one single tile and the ID of tile to be created is
+     * given in the VectortileGeneratorConfig struct.
+     *
+     * \param config reference to program configuration, coordinates of the corners of the tile are read from there
+     * \param untagged_nodes_table table containing nodes without tags
+     * \param nodes_table table containing nodes with tags
+     * \param ways_table table containing ways
+     * \param relations_table table containing relations
+     */
     VectorTile(VectortileGeneratorConfig& config, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
+            MyTable& relations_table);
+
+    /**
+     * \brief Constructor to be used if vectortile-generator should only generated all tiles listed in a file (expire tiles format)
+     *
+     * \param config reference to program configuration, coordinates of the corners of the tile are read from there
+     * \param bbox bounding box of the tile
+     * \param untagged_nodes_table table containing nodes without tags
+     * \param nodes_table table containing nodes with tags
+     * \param ways_table table containing ways
+     * \param relations_table table containing relations
+     */
+    VectorTile(VectortileGeneratorConfig& config, BoundingBox& bbox, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
             MyTable& relations_table);
 
     /**
      * build the vector tile by querying the database and save it to the disk
      */
     void generate_vectortile();
-
-    /**
-     * \brief convert x index of a tile to the WGS84 longitude coordinate of the upper left corner
-     *
-     * \param tile_x x index
-     * \param map_width number of tiles on this zoom level
-     *
-     * \returns longitude of upper left corner
-     */
-    static double tile_x_to_merc(const double tile_x, const int map_width);
-
-    /**
-     * \brief convert y index of a tile to the WGS84 latitude coordinate of the upper left corner
-     *
-     * \param tile_y y index
-     * \param map_width number of tiles on this zoom level
-     *
-     * \returns latitude of upper left corner
-     */
-    static double tile_y_to_merc(const double tile_y, const int map_width);
 
     /**
      * \brief sort objects in a buffer and write them to a file

@@ -84,10 +84,10 @@ void MyTable::build_bbox_query_params(BoundingBox& bbox, char** const params_arr
     char* param2 = new char[25];
     char* param3 = new char[25];
     char* param4 = new char[25];
-    sprintf(param1, "%f", bbox.min_lon);
-    sprintf(param2, "%f", bbox.min_lat);
-    sprintf(param3, "%f", bbox.max_lon);
-    sprintf(param4, "%f", bbox.max_lat);
+    sprintf(param1, "%f", bbox.m_min_lon);
+    sprintf(param2, "%f", bbox.m_min_lat);
+    sprintf(param3, "%f", bbox.m_max_lon);
+    sprintf(param4, "%f", bbox.m_max_lat);
     params_array[0] = param1;
     params_array[1] = param2;
     params_array[2] = param3;

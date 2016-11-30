@@ -26,3 +26,9 @@ target_link_libraries(test_hstore_parser testlib)
 add_test(NAME test_hstore_parser
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMAND test_hstore_parser)
+
+add_executable(test_bbox_conversion t/test_bbox_conversion.cpp ../src/bounding_box.cpp)
+target_link_libraries(test_bbox_conversion testlib ${PROJ_LIBRARY})
+add_test(NAME test_bbox_conversion
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND test_bbox_conversion)
