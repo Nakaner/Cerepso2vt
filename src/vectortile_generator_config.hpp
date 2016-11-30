@@ -15,6 +15,7 @@ struct VectortileGeneratorConfig {
     bool m_recurse_relations = false;
     bool m_recurse_ways = false;
     bool m_recurse_nodes = false;
+    bool m_force = false;
     int m_x;
     int m_y;
     int m_zoom;

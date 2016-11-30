@@ -31,6 +31,7 @@ void print_usage(char* argv[]) {
     "  -n, --recurse-nodes              write nodes to the output file which are beyond\n" \
     "                                   the bounding box of the tile and referenced\n" \
     "                                   by a relation\n" \
+    "  -f, --force-overwrite            overwrite output file if it exists\n" \
     "The output format is detected automatically based on the suffix of the output file."<< std::endl;
     exit(1);
 }
@@ -38,6 +39,11 @@ void print_usage(char* argv[]) {
 int main(int argc, char* argv[]) {
     static struct option long_options[] = {
             {"database",  required_argument, 0, 'd'},
+            {"recurse-relations",  no_argument, 0, 'r'},
+            {"recurse-ways",  no_argument, 0, 'w'},
+            {"recurse-nodes",  no_argument, 0, 'n'},
+            {"force-overwrite",  no_argument, 0, 'f'},
+            {"help",  no_argument, 0, 'h'},
             {0, 0, 0, 0}
         };
 
@@ -45,7 +51,7 @@ int main(int argc, char* argv[]) {
     // database related configuration is stored in a separate struct because it is defined by our Postgres access library
     postgres_drivers::Config pg_driver_config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:rwnh", long_options, 0);
+        int c = getopt_long(argc, argv, "d:rwnhf", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -62,6 +68,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 'n':
                 config.m_recurse_nodes = true;
+                break;
+            case 'f':
+                config.m_force = true;
                 break;
             case 'h':
                 print_usage(argv);

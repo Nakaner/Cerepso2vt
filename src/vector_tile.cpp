@@ -102,7 +102,11 @@ void VectorTile::write_file() {
     header.set("attribution", "http://www.openstreetmap.org/copyright");
     header.set("license", "http://opendatacommons.org/licenses/odbl/1-0/");
     osmium::io::File output_file{m_config.m_output_file};
-    osmium::io::Writer writer{output_file, header};
+    osmium::io::overwrite overwrite = osmium::io::overwrite::no;
+    if (m_config.m_force) {
+        overwrite = osmium::io::overwrite::allow;
+    }
+    osmium::io::Writer writer{output_file, header, overwrite};
     // We have to merge the buffers and sort the objects. Therefore first all nodes are written, then all ways and as last step
     // all relations.
     sort_buffer_and_write_it(m_buffer, writer);
