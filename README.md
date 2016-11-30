@@ -12,6 +12,7 @@ Dependencies
 You have to install following dependencies
 
 * libosmium
+* libproj-dev
 * postgres-drivers
 * libpq (use the packages of your distribution)
 * C++11 compiler, e.g. g++4.6 or newer
