@@ -47,7 +47,7 @@ BoundingBox::BoundingBox(int x, int y, int zoom) :
     }
     // transform to EPSG:4326
     osmium::geom::Coordinates south_west (west, south);
-    osmium::geom::Coordinates north_east (north, east);
+    osmium::geom::Coordinates north_east (east, north);
     south_west = osmium::geom::transform(from_crs, to_crs, south_west);
     north_east = osmium::geom::transform(from_crs, to_crs, north_east);
     // convert from coordinates radians to degree
