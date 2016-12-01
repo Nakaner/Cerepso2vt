@@ -327,8 +327,16 @@ void MyTable::get_relations_inside(osmium::memory::Buffer& relations_buffer, Bou
         relation.set_timestamp(PQgetvalue(result, i, 4));
         relation_builder.set_user("");
         add_tags(relations_buffer, &relation_builder, tags_hstore);
+        std::set<osmium::object_id_type>* missing_nodes_ptr = NULL;
+        std::set<osmium::object_id_type>* missing_relations_ptr = NULL;
+        if (m_config.m_recurse_nodes) {
+            missing_nodes_ptr = &missing_nodes;
+        }
+        if (m_config.m_recurse_relations) {
+            missing_relations_ptr = &missing_relations;
+        }
         add_relation_members(relations_buffer, &relation_builder, member_types, member_ids, member_roles, location_handler,
-                &missing_nodes, missing_ways, &missing_relations, ways_got, &relations_got);
+                missing_nodes_ptr, missing_ways, missing_relations_ptr, ways_got, &relations_got);
     }
     PQclear(result);
     relations_buffer.commit();
