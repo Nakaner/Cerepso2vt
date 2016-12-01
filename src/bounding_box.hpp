@@ -10,6 +10,7 @@
 
 #include <osmium/geom/coordinates.hpp>
 #include <osmium/geom/projection.hpp>
+#include "vectortile_generator_config.hpp"
 
 /**
  * \brief Bounding box which represents a tile in EPSG:4326 including a buffer.
@@ -17,20 +18,15 @@
 class BoundingBox {
 public:
     // This class is that simple that we do not hide any of its members.
+    int m_x;
+    int m_y;
+    int m_zoom;
     double m_min_lon = 0;
     double m_min_lat = 0;
     double m_max_lon = 0;
     double m_max_lat = 0;
 
     BoundingBox() = delete;
-
-    /*
-     * \brief constructor which converts from radians to degree
-     *
-     * \param south_west coordinate pair of south-west corner of the tile in radians
-     * \param north_east coordinate pair of south-west corner of the tile in radians
-     */
-    BoundingBox(osmium::geom::Coordinates& south_west, osmium::geom::Coordinates& north_east);
 
     /**
      * \brief constructor which converts from tile IDs to the internal representation of coordinates in this class
@@ -39,7 +35,15 @@ public:
      * \param y y index of the tile
      * \param zoom zoom level of the tile
      */
-    BoundingBox(unsigned int x, unsigned int y, unsigned int zoom);
+    BoundingBox(int x, int y, int zoom);
+
+    /**
+     * \brief Constructor which converts from tile ID to the internal representation of coordinates in this class.
+     * The tile ID is read from the program configuration (single tile mode).
+     *
+     * \param config reference to VectortileGeneratorConfig
+     */
+    BoundingBox(VectortileGeneratorConfig& config);
 
     /**
      * \brief Compare two bounding boxes.

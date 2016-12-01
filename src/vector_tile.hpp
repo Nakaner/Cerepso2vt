@@ -17,6 +17,7 @@
 class VectorTile {
 private:
     VectortileGeneratorConfig& m_config;
+
     /// reference to `untagged_nodes` table
     MyTable& m_untagged_nodes_table;
     /// reference to `nodes` table
@@ -99,19 +100,6 @@ private:
     void write_file();
 
 public:
-    /**
-     * \brief Constructor to be used if vectortile-generator should only generated one single tile and the ID of tile to be created is
-     * given in the VectortileGeneratorConfig struct.
-     *
-     * \param config reference to program configuration, coordinates of the corners of the tile are read from there
-     * \param untagged_nodes_table table containing nodes without tags
-     * \param nodes_table table containing nodes with tags
-     * \param ways_table table containing ways
-     * \param relations_table table containing relations
-     */
-    VectorTile(VectortileGeneratorConfig& config, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
-            MyTable& relations_table);
-
     /**
      * \brief Constructor to be used if vectortile-generator should only generated all tiles listed in a file (expire tiles format)
      *

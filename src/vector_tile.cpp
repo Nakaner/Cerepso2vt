@@ -11,19 +11,6 @@
 #include <osmium/osm/object_comparisons.hpp>
 #include "vector_tile.hpp"
 
-VectorTile::VectorTile(VectortileGeneratorConfig& config, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
-        MyTable& relations_table) :
-        m_config(config),
-        m_untagged_nodes_table(untagged_nodes_table),
-        m_nodes_table(nodes_table),
-        m_ways_table(ways_table),
-        m_relations_table(relations_table),
-        m_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
-        m_location_handler(m_index),
-        m_bbox(config.m_x, config.m_y, config.m_zoom) {
-    std::cout << m_bbox.m_min_lon << " " << m_bbox.m_min_lat << " " << m_bbox.m_max_lon << " " << m_bbox.m_max_lat << "\n";
-}
-
 VectorTile::VectorTile(VectortileGeneratorConfig& config, BoundingBox& bbox, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
         MyTable& relations_table) :
         m_config(config),
@@ -97,7 +84,17 @@ void VectorTile::write_file() {
     header.set("copyright", "OpenStreetMap and contributors");
     header.set("attribution", "http://www.openstreetmap.org/copyright");
     header.set("license", "http://opendatacommons.org/licenses/odbl/1-0/");
-    osmium::io::File output_file{m_config.m_output_file};
+    std::string output_path = m_config.m_output_path;
+    if (m_config.m_batch_mode) {
+        output_path += std::to_string(m_bbox.m_zoom);
+        output_path.push_back('_');
+        output_path += std::to_string(m_bbox.m_x);
+        output_path.push_back('_');
+        output_path += std::to_string(m_bbox.m_y);
+        output_path.push_back('.');
+        output_path += m_config.m_file_suffix;
+    }
+    osmium::io::File output_file{output_path};
     osmium::io::overwrite overwrite = osmium::io::overwrite::no;
     if (m_config.m_force) {
         overwrite = osmium::io::overwrite::allow;

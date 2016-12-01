@@ -14,13 +14,13 @@
 /// \todo check if this is the "right" circumfence
 const double EARTH_CIRCUMFERENCE = 40075016.68;
 
-BoundingBox::BoundingBox(osmium::geom::Coordinates& south_west, osmium::geom::Coordinates& north_east) :
-        m_min_lon(radians_to_degree(south_west.x)),
-        m_min_lat(radians_to_degree(south_west.y)),
-        m_max_lon(radians_to_degree(north_east.x)),
-        m_max_lat(radians_to_degree(north_east.y)) {}
+BoundingBox::BoundingBox(VectortileGeneratorConfig& config) :
+    BoundingBox(config.m_x, config.m_y, config.m_zoom) {}
 
-BoundingBox::BoundingBox(unsigned int x, unsigned int y, unsigned int zoom) {
+BoundingBox::BoundingBox(int x, int y, int zoom) :
+        m_x(x),
+        m_y(y),
+        m_zoom(zoom) {
     int map_width = 1 << zoom;
     double tile_x_merc = tile_x_to_merc(x, map_width);
     double tile_y_merc = tile_y_to_merc(y, map_width);
@@ -45,12 +45,12 @@ BoundingBox::BoundingBox(unsigned int x, unsigned int y, unsigned int zoom) {
     if (south < -EARTH_CIRCUMFERENCE / 2) {
         south = -EARTH_CIRCUMFERENCE / 2;
     }
-    // transform to EPSG:436
+    // transform to EPSG:4326
     osmium::geom::Coordinates south_west (west, south);
     osmium::geom::Coordinates north_east (north, east);
     south_west = osmium::geom::transform(from_crs, to_crs, south_west);
     north_east = osmium::geom::transform(from_crs, to_crs, north_east);
-    // convert from radians to degree
+    // convert from coordinates radians to degree
     m_min_lon = radians_to_degree(south_west.x);
     m_min_lat = radians_to_degree(south_west.y);
     m_max_lon = radians_to_degree(north_east.x);

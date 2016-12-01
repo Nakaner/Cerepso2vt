@@ -21,7 +21,16 @@
  */
 void print_usage(char* argv[]) {
     std::cerr << "Usage: " << argv[0] << " [OPTIONS] [X] [Y] [Z] [OUTFILE]\n" \
+                 "or     " << argv[0] << " [OPTIONS] [LOGFILE] [FORMAT] [OUTDIR]\n" \
+    "  [X]         x index of a tile\n" \
+    "  [Y]         y index of a tile\n" \
+    "  [Z]         zoom level of a tile\n" \
+    "  [OUTFILE]   output file" \
+    "  [LOGFILE]   file containing a list of expired tiles\n" \
+    "  [FORMAT]    output format: 'osm', 'osm.pbf', 'opl'\n" \
+    "  [OUTDIR]    output directory\n" \
     "  -h, --help                       print help and exit\n" \
+    "  -v, --verbose                    be verbose\n" \
     "  -d, --database-name              database name\n" \
     "  -r, --recurse-relations          write relations to the output file which are\n" \
     "                                   referenced by other relations\n" \
@@ -51,7 +60,7 @@ int main(int argc, char* argv[]) {
     // database related configuration is stored in a separate struct because it is defined by our Postgres access library
     postgres_drivers::Config pg_driver_config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:rwnhf", long_options, 0);
+        int c = getopt_long(argc, argv, "d:rwnhfv", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -72,6 +81,9 @@ int main(int argc, char* argv[]) {
             case 'f':
                 config.m_force = true;
                 break;
+            case 'v':
+                config.m_verbose = true;
+                break;
             case 'h':
                 print_usage(argv);
                 break;
@@ -81,13 +93,24 @@ int main(int argc, char* argv[]) {
     }
 
     int remaining_args = argc - optind;
-    if (remaining_args != 4) {
-        print_usage(argv);
-    } else {
+    std::vector<BoundingBox> bboxes;
+    if (remaining_args == 4) {
         config.m_x = atoi(argv[optind]);
         config.m_y = atoi(argv[optind+1]);
         config.m_zoom = atoi(argv[optind+2]);
-        config.m_output_file =  argv[optind+3];
+        config.m_output_path =  argv[optind+3];
+        bboxes.push_back(BoundingBox(config));
+    } else if (remaining_args == 3) {
+        config.m_batch_mode = true;
+        bboxes = BoundingBox::read_tiles_list(argv[optind]);
+        config.m_file_suffix =  argv[optind+1];
+        config.m_output_path =  argv[optind+2];
+        // check if last character of the output path is a slash
+        if (config.m_output_path.back() != '/') {
+            config.m_output_path.push_back('/');
+        }
+    } else {
+        print_usage(argv);
     }
 
     // column definitions
@@ -102,9 +125,13 @@ int main(int argc, char* argv[]) {
     MyTable ways_linear_table ("ways", pg_driver_config, way_linear_columns, config);
     MyTable relations_table("relations", pg_driver_config, relation_other_columns, config);
 
-    VectorTile vector_tile (config, nodes_table, untagged_nodes_table,
-            ways_linear_table, relations_table);
-    vector_tile.generate_vectortile();
+    for (BoundingBox& bbox : bboxes) {
+        if (config.m_verbose) {
+            std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
+        }
+        VectorTile vector_tile (config, bbox, nodes_table, untagged_nodes_table, ways_linear_table, relations_table);
+        vector_tile.generate_vectortile();
+    }
 }
 
 
