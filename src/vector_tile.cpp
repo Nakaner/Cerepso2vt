@@ -27,7 +27,9 @@ VectorTile::VectorTile(VectortileGeneratorConfig& config, BoundingBox& bbox, MyT
 
 void VectorTile::get_nodes_inside() {
     m_nodes_table.get_nodes_inside(m_buffer, m_location_handler, m_bbox);
-    m_untagged_nodes_table.get_nodes_inside(m_buffer, m_location_handler, m_bbox);
+    if (m_config.m_orphaned_nodes) {
+        m_untagged_nodes_table.get_nodes_inside(m_buffer, m_location_handler, m_bbox);
+    }
 }
 
 void VectorTile::get_missing_nodes() {

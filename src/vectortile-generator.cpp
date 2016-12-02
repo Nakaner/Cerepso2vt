@@ -33,6 +33,10 @@ void print_usage(char* argv[]) {
     "  -v, --verbose                 be verbose\n" \
     "  -d NAME, --database-name=NAME name of the database where the OSM data is stored\n" \
     "  -j NAME, --jobs-database=NAME name of the database where to write processing jobs\n" \
+    "  -O, --orphaned-nodes          do a spatial query on the untagged nodes table\n" \
+    "                                You really need a spatial index on that table, otherwise\n" \
+    "                                you will do a sequential scan on that table! Using -O\n" \
+    "                                will return you orphaned nodes you would not have got.\n" \
     "  -r, --recurse-relations       write relations to the output file which are\n" \
     "                                referenced by other relations\n" \
     "  -w, --recurse-ways            write ways to the output file which are beyond\n" \
@@ -62,7 +66,7 @@ int main(int argc, char* argv[]) {
     // database related configuration is stored in a separate struct because it is defined by our Postgres access library
     postgres_drivers::Config pg_driver_config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:rwnhfvj:", long_options, 0);
+        int c = getopt_long(argc, argv, "d:rwnhfvj:O", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -88,6 +92,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 'v':
                 config.m_verbose = true;
+                break;
+            case 'O':
+                config.m_orphaned_nodes = true;
                 break;
             case 'h':
                 print_usage(argv);

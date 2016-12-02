@@ -19,6 +19,9 @@ struct VectortileGeneratorConfig {
 
     /// true if we create multiple tiles at once
     bool m_batch_mode = false;
+
+    /// Do a spatial query on `untagged_nodes` table?
+    bool m_orphaned_nodes = false;
     bool m_verbose = false;
     bool m_recurse_relations = false;
     bool m_recurse_ways = false;
