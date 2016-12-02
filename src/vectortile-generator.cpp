@@ -33,6 +33,7 @@ void print_usage(char* argv[]) {
     "  -v, --verbose                 be verbose\n" \
     "  -d NAME, --database-name=NAME name of the database where the OSM data is stored\n" \
     "  -j NAME, --jobs-database=NAME name of the database where to write processing jobs\n" \
+    "                                This argument is mandatory if you want to write jobs.\n" \
     "  -O, --orphaned-nodes          do a spatial query on the untagged nodes table\n" \
     "                                You really need a spatial index on that table, otherwise\n" \
     "                                you will do a sequential scan on that table! Using -O\n" \

@@ -94,15 +94,19 @@ void VectorTile::generate_vectortile() {
     sprintf(created, "%4d-%2d-%2dT%2d:%2d:%2dZ", ptm->tm_year, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
 
     // drop previous job if it has not been completed yet
-    m_jobs_db.cancel_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom);
-    // delete old vector tile
-    if (std::remove(output_path.c_str())) {
-        std::cerr << "Error deleting old vector tile " << output_path << '\n';
+    if (m_config.m_jobs_database != "") {
+        m_jobs_db.cancel_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom);
+        // delete old vector tile
+        if (std::remove(output_path.c_str())) {
+            std::cerr << "Error deleting old vector tile " << output_path << '\n';
+        }
     }
     write_file(output_path);
 
     // insert into jobs database
-    m_jobs_db.add_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom, created, output_path.c_str());
+    if (m_config.m_jobs_database != "") {
+        m_jobs_db.add_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom, created, output_path.c_str());
+    }
 }
 
 /*static*/ void VectorTile::sort_buffer_and_write_it(osmium::memory::Buffer& buffer, osmium::io::Writer& writer) {
