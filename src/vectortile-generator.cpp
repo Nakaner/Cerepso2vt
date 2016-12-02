@@ -144,7 +144,7 @@ int main(int argc, char* argv[]) {
         if (config.m_verbose) {
             std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
         }
-        VectorTile vector_tile (config, bbox, nodes_table, untagged_nodes_table, ways_linear_table, relations_table, jobs_db);
+        VectorTile vector_tile (config, bbox, untagged_nodes_table, nodes_table, ways_linear_table, relations_table, jobs_db);
         vector_tile.generate_vectortile();
     }
 }
