@@ -6,6 +6,7 @@
  */
 
 #include <iostream>
+#include <sys/stat.h>
 #include <osmium/io/any_output.hpp>
 #include <osmium/io/file.hpp>
 #include <osmium/io/output_iterator.hpp>
@@ -96,9 +97,13 @@ void VectorTile::generate_vectortile() {
     // drop previous job if it has not been completed yet
     if (m_config.m_jobs_database != "") {
         m_jobs_db.cancel_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom);
-        // delete old vector tile
-        if (std::remove(output_path.c_str())) {
-            std::cerr << "Error deleting old vector tile " << output_path << '\n';
+        // check if file exists
+        struct stat stat_result;
+        if (stat(output_path.c_str(), &stat_result) == 0) {
+            // delete old vector tile
+            if (std::remove(output_path.c_str())) {
+                std::cerr << "Failed to delete old vector tile " << output_path << '\n';
+            }
         }
     }
     write_file(output_path);
