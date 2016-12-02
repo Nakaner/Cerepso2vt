@@ -13,6 +13,11 @@ struct VectortileGeneratorConfig {
     std::string m_output_path = "/tmp/test.osm";
     std::string m_file_suffix = "osm.pbf";
     std::string m_database = "pgimportertest";
+
+    /// name of the database where the processing jobs are managed
+    std::string m_jobs_database = "jobsdb";
+
+    /// true if we create multiple tiles at once
     bool m_batch_mode = false;
     bool m_verbose = false;
     bool m_recurse_relations = false;

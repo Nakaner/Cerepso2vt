@@ -4,6 +4,8 @@
  *  Created on: 13.10.2016
  *      Author: michael
  */
+
+#include <iostream>
 #include <osmium/io/any_output.hpp>
 #include <osmium/io/file.hpp>
 #include <osmium/io/output_iterator.hpp>
@@ -12,12 +14,13 @@
 #include "vector_tile.hpp"
 
 VectorTile::VectorTile(VectortileGeneratorConfig& config, BoundingBox& bbox, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
-        MyTable& relations_table) :
+        MyTable& relations_table, JobsDatabase& jobs_db) :
         m_config(config),
         m_untagged_nodes_table(untagged_nodes_table),
         m_nodes_table(nodes_table),
         m_ways_table(ways_table),
         m_relations_table(relations_table),
+        m_jobs_db(jobs_db),
         m_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
         m_location_handler(m_index),
         m_bbox(bbox){ }
@@ -67,23 +70,8 @@ void VectorTile::generate_vectortile() {
         get_missing_ways();
     }
     get_missing_nodes();
-    write_file();
-}
 
-/*static*/ void VectorTile::sort_buffer_and_write_it(osmium::memory::Buffer& buffer, osmium::io::Writer& writer) {
-    auto out = osmium::io::make_output_iterator(writer);
-    osmium::ObjectPointerCollection objects;
-    osmium::apply(buffer, objects);
-    objects.sort(osmium::object_order_type_id_reverse_version());
-    std::unique_copy(objects.cbegin(), objects.cend(), out, osmium::object_equal_type_id());
-}
-
-void VectorTile::write_file() {
-    osmium::io::Header header;
-    header.set("generator", "vectortile-generator");
-    header.set("copyright", "OpenStreetMap and contributors");
-    header.set("attribution", "http://www.openstreetmap.org/copyright");
-    header.set("license", "http://opendatacommons.org/licenses/odbl/1-0/");
+    // build path where to write the file
     std::string output_path = m_config.m_output_path;
     if (m_config.m_batch_mode) {
         output_path += std::to_string(m_bbox.m_zoom);
@@ -94,7 +82,42 @@ void VectorTile::write_file() {
         output_path.push_back('.');
         output_path += m_config.m_file_suffix;
     }
-    osmium::io::File output_file{output_path};
+
+    // get current time
+    time_t rawtime;
+    struct tm * ptm;
+    time (&rawtime);
+    ptm = gmtime(&rawtime);
+    char created[21];
+    sprintf(created, "%4d-%2d-%2dT%2d:%2d:%2dZ", ptm->tm_year, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
+
+    // drop previous job if it has not been completed yet
+    m_jobs_db.cancel_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom);
+    // delete old vector tile
+    if (std::remove(output_path.c_str())) {
+        std::cerr << "Error deleting old vector tile " << output_path << '\n';
+    }
+    write_file(output_path);
+
+    // insert into jobs database
+    m_jobs_db.add_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom, created, output_path.c_str());
+}
+
+/*static*/ void VectorTile::sort_buffer_and_write_it(osmium::memory::Buffer& buffer, osmium::io::Writer& writer) {
+    auto out = osmium::io::make_output_iterator(writer);
+    osmium::ObjectPointerCollection objects;
+    osmium::apply(buffer, objects);
+    objects.sort(osmium::object_order_type_id_reverse_version());
+    std::unique_copy(objects.cbegin(), objects.cend(), out, osmium::object_equal_type_id());
+}
+
+void VectorTile::write_file(std::string& path) {
+    osmium::io::Header header;
+    header.set("generator", "vectortile-generator");
+    header.set("copyright", "OpenStreetMap and contributors");
+    header.set("attribution", "http://www.openstreetmap.org/copyright");
+    header.set("license", "http://opendatacommons.org/licenses/odbl/1-0/");
+    osmium::io::File output_file{path};
     osmium::io::overwrite overwrite = osmium::io::overwrite::no;
     if (m_config.m_force) {
         overwrite = osmium::io::overwrite::allow;

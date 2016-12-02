@@ -13,6 +13,7 @@
 #include <osmium/io/writer.hpp>
 #include "mytable.hpp"
 #include "vectortile_generator_config.hpp"
+#include "jobs_database.hpp"
 
 class VectorTile {
 private:
@@ -26,6 +27,8 @@ private:
     MyTable& m_ways_table;
     /// reference to `relations` table
     MyTable& m_relations_table;
+
+    JobsDatabase& m_jobs_db;
 
     static const size_t BUFFER_SIZE = 10240;
 
@@ -93,11 +96,13 @@ private:
     void get_missing_nodes();
 
     /**
-     * write vectortile to file
+     * \brief Write vectortile to file and insert a job into the jobs database
      *
      * You should call the destructor after calling this method (e.g. let this instance go out of scope if it is no pointer).
+     *
+     * \brief path path where to write the file
      */
-    void write_file();
+    void write_file(std::string& path);
 
 public:
     /**
@@ -111,7 +116,7 @@ public:
      * \param relations_table table containing relations
      */
     VectorTile(VectortileGeneratorConfig& config, BoundingBox& bbox, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
-            MyTable& relations_table);
+            MyTable& relations_table, JobsDatabase& jobs_db);
 
     /**
      * build the vector tile by querying the database and save it to the disk

@@ -29,25 +29,27 @@ void print_usage(char* argv[]) {
     "  [LOGFILE]   file containing a list of expired tiles\n" \
     "  [FORMAT]    output format: 'osm', 'osm.pbf', 'opl'\n" \
     "  [OUTDIR]    output directory\n" \
-    "  -h, --help                       print help and exit\n" \
-    "  -v, --verbose                    be verbose\n" \
-    "  -d, --database-name              database name\n" \
-    "  -r, --recurse-relations          write relations to the output file which are\n" \
-    "                                   referenced by other relations\n" \
-    "  -w, --recurse-ways               write ways to the output file which are beyond\n" \
-    "                                   the bounding box of the tile and referenced\n" \
-    "                                   by a relation\n" \
-    "  -n, --recurse-nodes              write nodes to the output file which are beyond\n" \
-    "                                   the bounding box of the tile and referenced\n" \
-    "                                   by a relation\n" \
-    "  -f, --force-overwrite            overwrite output file if it exists\n" \
+    "  -h, --help                    print help and exit\n" \
+    "  -v, --verbose                 be verbose\n" \
+    "  -d NAME, --database-name=NAME name of the database where the OSM data is stored\n" \
+    "  -j NAME, --jobs-database=NAME name of the database where to write processing jobs\n" \
+    "  -r, --recurse-relations       write relations to the output file which are\n" \
+    "                                referenced by other relations\n" \
+    "  -w, --recurse-ways            write ways to the output file which are beyond\n" \
+    "                                the bounding box of the tile and referenced\n" \
+    "                                by a relation\n" \
+    "  -n, --recurse-nodes           write nodes to the output file which are beyond\n" \
+    "                                the bounding box of the tile and referenced\n" \
+    "                                by a relation\n" \
+    "  -f, --force-overwrite         overwrite output file if it exists\n" \
     "The output format is detected automatically based on the suffix of the output file."<< std::endl;
     exit(1);
 }
 
 int main(int argc, char* argv[]) {
     static struct option long_options[] = {
-            {"database",  required_argument, 0, 'd'},
+            {"database-name",  required_argument, 0, 'd'},
+            {"jobs-database",  required_argument, 0, 'j'},
             {"recurse-relations",  no_argument, 0, 'r'},
             {"recurse-ways",  no_argument, 0, 'w'},
             {"recurse-nodes",  no_argument, 0, 'n'},
@@ -60,7 +62,7 @@ int main(int argc, char* argv[]) {
     // database related configuration is stored in a separate struct because it is defined by our Postgres access library
     postgres_drivers::Config pg_driver_config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:rwnhfv", long_options, 0);
+        int c = getopt_long(argc, argv, "d:rwnhfvj:", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -68,6 +70,9 @@ int main(int argc, char* argv[]) {
         switch (c) {
             case 'd':
                 pg_driver_config.m_database_name = optarg;
+                break;
+            case 'j':
+                config.m_jobs_database = optarg;
                 break;
             case 'r':
                 config.m_recurse_relations = true;
@@ -125,11 +130,14 @@ int main(int argc, char* argv[]) {
     MyTable ways_linear_table ("ways", pg_driver_config, way_linear_columns, config);
     MyTable relations_table("relations", pg_driver_config, relation_other_columns, config);
 
+    // initialize connection to jobs' database
+    JobsDatabase jobs_db(config.m_jobs_database);
+
     for (BoundingBox& bbox : bboxes) {
         if (config.m_verbose) {
             std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
         }
-        VectorTile vector_tile (config, bbox, nodes_table, untagged_nodes_table, ways_linear_table, relations_table);
+        VectorTile vector_tile (config, bbox, nodes_table, untagged_nodes_table, ways_linear_table, relations_table, jobs_db);
         vector_tile.generate_vectortile();
     }
 }
