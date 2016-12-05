@@ -6,8 +6,8 @@
  */
 
 #include "mytable.hpp"
-#include "hstore_parser.hpp"
-#include "array_parser.hpp"
+#include <hstore_parser.hpp>
+#include <array_parser.hpp>
 #include "item_type_conversion.hpp"
 
 void delete_array_elements(char** array, size_t size) {
@@ -18,9 +18,9 @@ void delete_array_elements(char** array, size_t size) {
 
 void MyTable::add_tags(osmium::memory::Buffer& buffer, osmium::builder::Builder* builder, std::string& hstore_content) {
     osmium::builder::TagListBuilder tl_builder(buffer, builder);
-    HStoreParser hstore (hstore_content);
+    pg_array_hstore_parser::HStoreParser hstore (hstore_content);
     while (hstore.has_next()) {
-        StringPair kv_pair = hstore.get_next();
+        pg_array_hstore_parser::StringPair kv_pair = hstore.get_next();
         tl_builder.add_tag(kv_pair.first, kv_pair.second);
     }
 }
@@ -28,11 +28,11 @@ void MyTable::add_tags(osmium::memory::Buffer& buffer, osmium::builder::Builder*
 void MyTable::add_node_refs(osmium::memory::Buffer& ways_buffer, osmium::builder::WayBuilder* way_builder,
         std::string& nodes_array, location_handler_type& location_handler, std::set<osmium::object_id_type>& missing_nodes) {
     osmium::builder::WayNodeListBuilder wnl_builder{ways_buffer, way_builder};
-    ArrayParser<Int64Conversion> array_parser(nodes_array);
+    pg_array_hstore_parser::ArrayParser<pg_array_hstore_parser::Int64Conversion> array_parser(nodes_array);
     while (array_parser.has_next()) {
         // If Int64Conversion::output_type instead of "int64_t", we can easily change the output type of Int64Conversion without
         // having to change it here, too.
-        Int64Conversion::output_type node_ref = array_parser.get_next();
+        pg_array_hstore_parser::Int64Conversion::output_type node_ref = array_parser.get_next();
         wnl_builder.add_node_ref(osmium::NodeRef(node_ref, osmium::Location()));
         check_node_availability(location_handler, &missing_nodes, node_ref);
     }
@@ -55,13 +55,13 @@ void MyTable::add_relation_members(osmium::memory::Buffer& relation_buffer, osmi
         std::set<osmium::object_id_type>* missing_relations, std::set<osmium::object_id_type>& ways_got,
         std::set<osmium::object_id_type>* relations_got) {
     osmium::builder::RelationMemberListBuilder rml_builder(relation_buffer, relation_builder);
-    ArrayParser<ItemTypeConversion> array_parser_types(member_types);
-    ArrayParser<Int64Conversion> array_parser_ids(member_ids);
-    ArrayParser<StringConversion> array_parser_roles(member_roles);
+    pg_array_hstore_parser::ArrayParser<ItemTypeConversion> array_parser_types(member_types);
+    pg_array_hstore_parser::ArrayParser<pg_array_hstore_parser::Int64Conversion> array_parser_ids(member_ids);
+    pg_array_hstore_parser::ArrayParser<pg_array_hstore_parser::StringConversion> array_parser_roles(member_roles);
     while (array_parser_types.has_next() && array_parser_ids.has_next() && array_parser_roles.has_next()) {
         ItemTypeConversion::output_type type = array_parser_types.get_next();
-        Int64Conversion::output_type id = array_parser_ids.get_next();
-        StringConversion::output_type role = array_parser_roles.get_next();
+        pg_array_hstore_parser::Int64Conversion::output_type id = array_parser_ids.get_next();
+        pg_array_hstore_parser::StringConversion::output_type role = array_parser_roles.get_next();
         rml_builder.add_member(type, id, role.c_str());
         if (type == osmium::item_type::node && missing_nodes) {
             check_node_availability(location_handler, missing_nodes, id);

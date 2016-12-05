@@ -8,12 +8,13 @@
 #ifndef SRC_ITEM_TYPE_CONVERSION_HPP_
 #define SRC_ITEM_TYPE_CONVERSION_HPP_
 
-#include "type_conversion.hpp"
+#include <type_conversion.hpp>
 
 /**
- * \brief TypeConversionImpl implementation to be used with TypeConversion class if the output format should be std::string.
+ * \brief TypeConversionImpl implementation to be used with TypeConversion class if the output format should be osmium::item_type.
  *
- * This implements the Null Object Pattern.
+ * This class extends the functionality of the pg-array-hstore-parser library. This class is not shipped with that library because
+ * it is Osmium-specific and Osmium should not be a dependency of that library.
  */
 class ItemTypeConversionImpl {
 public:
@@ -50,7 +51,7 @@ public:
     }
 };
 
-using ItemTypeConversion = TypeConversion<ItemTypeConversionImpl>;
+using ItemTypeConversion = pg_array_hstore_parser::TypeConversion<ItemTypeConversionImpl>;
 
 
 #endif /* SRC_ITEM_TYPE_CONVERSION_HPP_ */
