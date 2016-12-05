@@ -9,6 +9,7 @@
 #define SRC_ITEM_TYPE_CONVERSION_HPP_
 
 #include <type_conversion.hpp>
+#include <osmium/osm/item_type.hpp>
 
 /**
  * \brief TypeConversionImpl implementation to be used with TypeConversion class if the output format should be osmium::item_type.
@@ -35,7 +36,7 @@ public:
         case 'r':
             return osmium::item_type::relation;
         default:
-            return osmium::item_type::undefined;
+            return return_null_value();
         }
     }
 
