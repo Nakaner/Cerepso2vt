@@ -9,100 +9,30 @@
 #define SRC_VECTOR_TILE_HPP_
 
 #include <set>
-#include <osmium/memory/buffer.hpp>
-#include <osmium/io/writer.hpp>
-#include "mytable.hpp"
 #include "vectortile_generator_config.hpp"
 #include "jobs_database.hpp"
 
+/**
+ * \brief class representing a vector tile and providing the public interface to build a vectortile
+ *
+ * \tparam Vector tile implementation to use which builds the vector tile. This implementation should provide following
+ * two public methods (there are no other public methods called):
+ * * void TVectorTileImpl::clear(BoundingBox& bbox)
+ * * void TVectorTileImpl::generate_vectortile(std::string& output_path)
+ *
+ * The implementation cares for everythin which is related to the output format: querying the database (because some output
+ * formats have a special area type, building the entities and writing the file).
+ */
+template <class TVectorTileImpl>
 class VectorTile {
 private:
     VectortileGeneratorConfig& m_config;
 
-    /// reference to `untagged_nodes` table
-    MyTable& m_untagged_nodes_table;
-    /// reference to `nodes` table
-    MyTable& m_nodes_table;
-    /// reference to `ways` table
-    MyTable& m_ways_table;
-    /// reference to `relations` table
-    MyTable& m_relations_table;
+    TVectorTileImpl& m_implementation;
 
-    JobsDatabase& m_jobs_db;
-
-    static const size_t BUFFER_SIZE = 10240;
-
-    /// buffer where all built OSM objects will reside
-    osmium::memory::Buffer m_buffer;
-
-    /// necessary for m_location_handler
-    index_type m_index;
-    /// nodes we have already fetched from the database
-    location_handler_type m_location_handler;
-
-    /// bounding box of the tile
     BoundingBox m_bbox;
 
-    /// ways we have already fetched from the database
-    std::set<osmium::object_id_type> m_ways_got;
-    /// relations we have already fetched from the database
-    std::set<osmium::object_id_type> m_relations_got;
-
-    /// list of nodes not retrieved by a spatial query but which are necessary to build the ways
-    std::set<osmium::object_id_type> m_missing_nodes;
-    /// list of ways not retrieved by a spatial query but which are necessary to complete some relations
-    std::set<osmium::object_id_type> m_missing_ways;
-    /// list of relations not retrieved by a spatial query but which are referenced by other relations
-    std::set<osmium::object_id_type> m_missing_relations;
-
-    /**
-     * get relations intersecting this tile
-     */
-    void get_intersecting_relations();
-
-    /**
-     * get ways intersecting this tile
-     */
-    void get_intersecting_ways();
-
-    /**
-     * get nodes inside this tile
-     */
-    void get_nodes_inside();
-
-    /**
-     * get ways intersecting this tile
-     */
-    void get_ways_inside();
-
-    /**
-     * get relations intersecting this tile
-     */
-    void get_relations_inside();
-
-    /**
-     * get all relations which are reference but have not been satisfied yet
-     */
-    void get_missing_relations();
-
-    /**
-     * get all ways which are reference but have not been satisfied yet
-     */
-    void get_missing_ways();
-
-    /**
-     * get all node which are reference but have not been satisfied yet
-     */
-    void get_missing_nodes();
-
-    /**
-     * \brief Write vectortile to file and insert a job into the jobs database
-     *
-     * You should call the destructor after calling this method (e.g. let this instance go out of scope if it is no pointer).
-     *
-     * \brief path path where to write the file
-     */
-    void write_file(std::string& path);
+    JobsDatabase* m_jobs_db;
 
 public:
     /**
@@ -110,30 +40,60 @@ public:
      *
      * \param config reference to program configuration, coordinates of the corners of the tile are read from there
      * \param bbox bounding box of the tile
-     * \param untagged_nodes_table table containing nodes without tags
-     * \param nodes_table table containing nodes with tags
-     * \param ways_table table containing ways
-     * \param relations_table table containing relations
+     * \param jobs_db reference to instance of JobsDatabase
      */
-    VectorTile(VectortileGeneratorConfig& config, BoundingBox& bbox, MyTable& untagged_nodes_table, MyTable& nodes_table, MyTable& ways_table,
-            MyTable& relations_table, JobsDatabase& jobs_db);
+    VectorTile(VectortileGeneratorConfig& config, TVectorTileImpl& implementation, BoundingBox& bbox, JobsDatabase* jobs_db) :
+        m_config(config),
+        m_implementation(implementation),
+        m_bbox(bbox),
+        m_jobs_db(jobs_db) {
+        m_implementation.clear(bbox);
+    }
 
     /**
-     * build the vector tile by querying the database and save it to the disk
+     * build the vector tile by calling the method of the choosen implementation and update the jobs database
      */
-    void generate_vectortile();
+    void generate_vectortile() {
+        // build path where to write the file
+        std::string output_path = m_config.m_output_path;
+        if (m_config.m_batch_mode) {
+            output_path += std::to_string(m_bbox.m_zoom);
+            output_path.push_back('_');
+            output_path += std::to_string(m_bbox.m_x);
+            output_path.push_back('_');
+            output_path += std::to_string(m_bbox.m_y);
+            output_path.push_back('.');
+            output_path += m_config.m_file_suffix;
+        }
 
-    /**
-     * \brief sort objects in a buffer and write them to a file
-     *
-     * Code is taken and modified from [Osmium -- OpenStreetMap data manipulation command line tool](http://osmcode.org/osmium)
-     * which is Copyright (C) 2013-2016  Jochen Topf <jochen@topf.org> and available under the terms of
-     * GNU General Public License version 3 or newer.
-     *
-     * \param buffer buffer where the objects are stored at
-     * \param writer writer which should write the objects to a file
-     */
-    static void sort_buffer_and_write_it(osmium::memory::Buffer& buffer, osmium::io::Writer& writer);
+        // get current time
+        time_t rawtime;
+        struct tm * ptm;
+        time (&rawtime);
+        ptm = gmtime(&rawtime);
+        char created[21];
+        sprintf(created, "%4d-%2d-%2dT%2d:%2d:%2dZ", ptm->tm_year, ptm->tm_mon, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
+
+        // drop previous job if it has not been completed yet
+        if (m_jobs_db) { // If the user does not want to write jobs, the unique_ptr doesn't manage anything.
+            m_jobs_db->cancel_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom);
+            // check if file exists
+            struct stat stat_result;
+            if (stat(output_path.c_str(), &stat_result) == 0) {
+                // delete old vector tile
+                if (std::remove(output_path.c_str())) {
+                    std::cerr << "Failed to delete old vector tile " << output_path << '\n';
+                }
+            }
+        }
+
+        m_implementation.generate_vectortile(output_path);
+
+        // insert into jobs database
+        if (m_jobs_db) { // If the user does not want to write jobs, the unique_ptr doesn't manage anything.
+            m_jobs_db->add_job(m_bbox.m_x, m_bbox.m_y, m_bbox.m_zoom, created, output_path.c_str());
+        }
+    }
 };
 
 

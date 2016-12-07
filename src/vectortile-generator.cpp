@@ -9,10 +9,12 @@
 #include <iostream>
 #include <getopt.h>
 #include <string>
+#include <memory>
 #include <columns.hpp>
+#include "osmvectortileimpl.hpp"
 #include "vectortile_generator_config.hpp"
-#include "mytable.hpp"
 #include "vector_tile.hpp"
+#include "osm_data_table.hpp"
 
 /**
  * \brief print program usage and terminate the program
@@ -133,19 +135,25 @@ int main(int argc, char* argv[]) {
     postgres_drivers::Columns relation_other_columns(pg_driver_config, postgres_drivers::TableType::RELATION_OTHER);
 
     // intialize connection to database tables
-    MyTable nodes_table ("nodes", pg_driver_config, node_columns, config);
-    MyTable untagged_nodes_table ("untagged_nodes", pg_driver_config, untagged_nodes_columns, config);
-    MyTable ways_linear_table ("ways", pg_driver_config, way_linear_columns, config);
-    MyTable relations_table("relations", pg_driver_config, relation_other_columns, config);
+    OSMDataTable nodes_table ("nodes", pg_driver_config, node_columns);
+    OSMDataTable untagged_nodes_table ("untagged_nodes", pg_driver_config, node_columns);
+    OSMDataTable ways_linear_table ("ways", pg_driver_config, node_columns);
+    OSMDataTable relations_table ("relations", pg_driver_config, node_columns);
+
+    // initialize the implmenation used to produce the vector tile
+    OSMVectorTileImpl vector_tile_impl (config, untagged_nodes_table, nodes_table, ways_linear_table, relations_table);
 
     // initialize connection to jobs' database
-    JobsDatabase jobs_db(config.m_jobs_database);
+    std::unique_ptr<JobsDatabase> jobs_db;
+    if (config.m_jobs_database != "") {
+        jobs_db = std::unique_ptr<JobsDatabase>(new JobsDatabase(config.m_jobs_database));
+    }
 
     for (BoundingBox& bbox : bboxes) {
         if (config.m_verbose) {
             std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
         }
-        VectorTile vector_tile (config, bbox, untagged_nodes_table, nodes_table, ways_linear_table, relations_table, jobs_db);
+        VectorTile<OSMVectorTileImpl> vector_tile(config, vector_tile_impl, bbox, jobs_db.get());
         vector_tile.generate_vectortile();
     }
 }
