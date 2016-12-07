@@ -20,7 +20,7 @@
  * * void TVectorTileImpl::clear(BoundingBox& bbox)
  * * void TVectorTileImpl::generate_vectortile(std::string& output_path)
  *
- * The implementation cares for everythin which is related to the output format: querying the database (because some output
+ * The implementation cares for everything which is related to the output format: querying the database (because some output
  * formats have a special area type, building the entities and writing the file).
  */
 template <class TVectorTileImpl>

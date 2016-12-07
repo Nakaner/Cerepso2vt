@@ -18,6 +18,9 @@
  * Because we do a lot of bounding-box based querys (`ST_Intersects`) and use the instances of this class
  * for multiple tiles we create, it is a good idea to store query parameters which are used very often
  * permanent in this class.
+ *
+ * This class aims to be as independent as possible from the output format of the vector tiles and is designed
+ * as a wrapper around postgres_drivers::Table.
  */
 
 class OSMDataTable : public postgres_drivers::Table {
