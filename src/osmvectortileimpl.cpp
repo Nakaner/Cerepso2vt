@@ -334,5 +334,5 @@ void OSMVectorTileImpl::sort_buffer_and_write_it(osmium::io::Writer& writer) {
     osmium::ObjectPointerCollection objects;
     osmium::apply(m_buffer, objects);
     objects.sort(osmium::object_order_type_id_reverse_version());
-    std::unique_copy(objects.cbegin(), objects.cend(), out, osmium::object_equal_type_id());
+    std::copy(objects.cbegin(), objects.cend(), out);
 }
