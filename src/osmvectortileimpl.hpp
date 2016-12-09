@@ -98,20 +98,9 @@ private:
      * \param member_ids reference to the string which contains the string representation of the array from member_ids column
      * \param member_roles reference to the string which contains the string representation of the array from member_roles column
      * \param location_handler reference to the location handler
-     * \param missing_nodes Pointer to a set where node IDs are stored which have not been retrieved from the database yet.
-     *        Use a nullptr if you don't want that the vectortile generator checks if all referenced nodes are already in the buffer.
-     * \param missing_relations Pointer to a set where relation IDs are stored which have not been retrieved from the database yet.
-     *        Use a nullptr if you don't want that the vectortile generator checks if all referenced relations are already
-     *        in the buffer.
-     * \param relations_got dto. for relations
-     *
-     * The parameters missing_relations and relations_got are pointers because there are use cases where you do not want that
-     * items are added to these sets. If you don't want items to be added to them, give a nullptr to this method.
      */
     void add_relation_members(osmium::builder::RelationBuilder* relation_builder,
-            std::string& member_types, std::string& member_ids, std::string& member_roles,
-            std::set<osmium::object_id_type>* missing_nodes, std::set<osmium::object_id_type>* missing_relations,
-            std::set<osmium::object_id_type>* relations_got);
+            std::string& member_types, std::string& member_ids, std::string& member_roles);
 
     /**
      * \brief check if a node is available in the location handler and insert it into the list of missing nodes if it is not

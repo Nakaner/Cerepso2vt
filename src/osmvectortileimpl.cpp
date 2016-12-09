@@ -60,10 +60,7 @@ void OSMVectorTileImpl::check_node_availability(const osmium::object_id_type id)
 }
 
 void OSMVectorTileImpl::add_relation_members(osmium::builder::RelationBuilder* relation_builder,
-        std::string& member_types, std::string& member_ids, std::string& member_roles,
-        std::set<osmium::object_id_type>* missing_nodes,
-        std::set<osmium::object_id_type>* missing_relations,
-        std::set<osmium::object_id_type>* relations_got) {
+        std::string& member_types, std::string& member_ids, std::string& member_roles) {
     osmium::builder::RelationMemberListBuilder rml_builder(m_buffer, relation_builder);
     pg_array_hstore_parser::ArrayParser<ItemTypeConversion> array_parser_types(member_types);
     pg_array_hstore_parser::ArrayParser<pg_array_hstore_parser::Int64Conversion> array_parser_ids(member_ids);
@@ -73,17 +70,17 @@ void OSMVectorTileImpl::add_relation_members(osmium::builder::RelationBuilder* r
         pg_array_hstore_parser::Int64Conversion::output_type id = array_parser_ids.get_next();
         pg_array_hstore_parser::StringConversion::output_type role = array_parser_roles.get_next();
         rml_builder.add_member(type, id, role.c_str());
-        if (type == osmium::item_type::node && missing_nodes) {
+        if (type == osmium::item_type::node && m_config.m_recurse_nodes) {
             check_node_availability(id);
         } else if (type == osmium::item_type::way && m_config.m_recurse_ways) {
             std::set<osmium::object_id_type>::iterator ways_it = m_ways_got.find(id);
             if (ways_it == m_ways_got.end()) {
                 m_missing_ways.insert(id);
             }
-        } else if (type == osmium::item_type::relation && missing_relations && relations_got) {
-            std::set<osmium::object_id_type>::iterator relations_it = relations_got->find(id);
-            if (relations_it == relations_got->end()) {
-                missing_relations->insert(id);
+        } else if (type == osmium::item_type::relation && m_config.m_recurse_relations) {
+            std::set<osmium::object_id_type>::iterator relations_it = m_relations_got.find(id);
+            if (relations_it == m_relations_got.end()) {
+                m_missing_relations.insert(id);
             }
         }
     }
@@ -147,13 +144,12 @@ void OSMVectorTileImpl::get_missing_nodes() {
         PGresult* result = m_untagged_nodes_table.run_prepared_statement("get_single_node_without_tags", 1, param_values);
         if (PQntuples(result) > 0) {
             parse_node_query_result(result, false, id);
-            PQclear(result);
         } else {
-            PQclear(result);
             PGresult* result2 = m_nodes_table.run_prepared_statement("get_single_node_with_tags", 1, param_values);
             parse_node_query_result(result, true, id);
             PQclear(result2);
         }
+        PQclear(result);
     }
     m_buffer.commit();
 }
@@ -228,16 +224,7 @@ void OSMVectorTileImpl::parse_relation_query_result(PGresult* result, osmium::ob
         relation.set_timestamp(PQgetvalue(result, i, 3 + field_offset));
         relation_builder.set_user("");
         add_tags(&relation_builder, tags_hstore);
-        std::set<osmium::object_id_type>* missing_nodes_ptr = NULL;
-        std::set<osmium::object_id_type>* missing_relations_ptr = NULL;
-        if (m_config.m_recurse_nodes) {
-            missing_nodes_ptr = &m_missing_nodes;
-        }
-        if (m_config.m_recurse_relations) {
-            missing_relations_ptr = &m_missing_relations;
-        }
-        add_relation_members(&relation_builder, member_types, member_ids, member_roles, missing_nodes_ptr,
-                missing_relations_ptr, &m_relations_got);
+        add_relation_members(&relation_builder, member_types, member_ids, member_roles);
     }
 }
 
@@ -255,7 +242,7 @@ void OSMVectorTileImpl::get_missing_relations() {
     for (auto id : m_missing_relations) {
         sprintf(param, "%ld", id);
         PGresult* result = m_ways_table.run_prepared_statement("get_single_relation", 1, param_values);
-        parse_way_query_result(result, id);
+        parse_relation_query_result(result, id);
         PQclear(result);
     }
     m_buffer.commit();
