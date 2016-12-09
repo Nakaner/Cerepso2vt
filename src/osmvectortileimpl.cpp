@@ -146,7 +146,7 @@ void OSMVectorTileImpl::get_missing_nodes() {
             parse_node_query_result(result, false, id);
         } else {
             PGresult* result2 = m_nodes_table.run_prepared_statement("get_single_node_with_tags", 1, param_values);
-            parse_node_query_result(result, true, id);
+            parse_node_query_result(result2, true, id);
             PQclear(result2);
         }
         PQclear(result);
