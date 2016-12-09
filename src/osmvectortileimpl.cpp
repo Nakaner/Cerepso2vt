@@ -149,6 +149,7 @@ void OSMVectorTileImpl::get_missing_nodes() {
             parse_node_query_result(result, false, id);
             PQclear(result);
         } else {
+            PQclear(result);
             PGresult* result2 = m_nodes_table.run_prepared_statement("get_single_node_with_tags", 1, param_values);
             parse_node_query_result(result, true, id);
             PQclear(result2);
@@ -334,5 +335,7 @@ void OSMVectorTileImpl::sort_buffer_and_write_it(osmium::io::Writer& writer) {
     osmium::ObjectPointerCollection objects;
     osmium::apply(m_buffer, objects);
     objects.sort(osmium::object_order_type_id_reverse_version());
-    std::copy(objects.cbegin(), objects.cend(), out);
+    // std::copy (i.e. copy without comparing the objects) does not work. Nodes with tags beyond the
+    // bounding box will not be written to the output file.
+    std::unique_copy(objects.cbegin(), objects.cend(), out, osmium::object_equal_type_id());
 }
