@@ -51,10 +51,7 @@ BoundingBox::BoundingBox(int x, int y, int zoom) :
     south_west = osmium::geom::transform(from_crs, to_crs, south_west);
     north_east = osmium::geom::transform(from_crs, to_crs, north_east);
     // convert from coordinates radians to degree
-    m_min_lon = radians_to_degree(south_west.x);
-    m_min_lat = radians_to_degree(south_west.y);
-    m_max_lon = radians_to_degree(north_east.x);
-    m_max_lat = radians_to_degree(north_east.y);
+    convert_to_degree_and_set_coords(south_west, north_east);
 }
 
 bool BoundingBox::operator!=(BoundingBox& other){

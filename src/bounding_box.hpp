@@ -16,6 +16,16 @@
  * \brief Bounding box which represents a tile in EPSG:4326 including a buffer.
  */
 class BoundingBox {
+    /**
+     * \brief Convert coordinates from radians to degree and set them.
+     *
+     * Similar behavior to BoundingBox::BoundingBox(osmium::geom::Coordinates& south_west, osmium::geom::Coordinates& north_east).
+     *
+     * \param south_west coordinate pair of south-west corner of the tile in radians
+     * \param north_east coordinate pair of south-west corner of the tile in radians
+     */
+    void convert_to_degree_and_set_coords(osmium::geom::Coordinates& south_west, osmium::geom::Coordinates& north_east);
+
 public:
     // This class is that simple that we do not hide any of its members.
     int m_x;
@@ -51,16 +61,6 @@ public:
      * This method was written for some unit tests to make them look nice.
      */
     bool operator!=(BoundingBox& other);
-
-    /**
-     * \brief Convert coordinates from radians to degree and set them.
-     *
-     * Similar behavior to BoundingBox::BoundingBox(osmium::geom::Coordinates& south_west, osmium::geom::Coordinates& north_east).
-     *
-     * \param south_west coordinate pair of south-west corner of the tile in radians
-     * \param north_east coordinate pair of south-west corner of the tile in radians
-     */
-    void convert_to_degree_and_set_coords(osmium::geom::Coordinates& south_west, osmium::geom::Coordinates& north_east);
 
     /**
      * \brief check if the bounding box is not collapsed
@@ -116,15 +116,6 @@ public:
      * \returns vector with one bounding box per tile
      */
     static std::vector<BoundingBox> read_tiles_list(const char* filename);
-
-    /**
-     * \brief Read list of expired tiles from file.
-     *
-     * \param filename name of the file to read from
-     *
-     * \returns vector with one bounding box per tile
-     */
-    static std::vector<BoundingBox> read_tiles_list(std::string& filename);
 };
 
 #endif /* SRC_BOUNDING_BOX_HPP_ */
