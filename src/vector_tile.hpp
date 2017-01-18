@@ -26,12 +26,16 @@
 template <class TVectorTileImpl>
 class VectorTile {
 private:
+    /// reference to program configuration
     VectortileGeneratorConfig& m_config;
 
+    /// reference to the implementation of the output file
     TVectorTileImpl& m_implementation;
 
+    /// bounding box of this tile
     BoundingBox m_bbox;
 
+    /// pointer to the jobs' database
     JobsDatabase* m_jobs_db;
 
 public:
@@ -39,6 +43,7 @@ public:
      * \brief Constructor to be used if vectortile-generator should only generated all tiles listed in a file (expire tiles format)
      *
      * \param config reference to program configuration, coordinates of the corners of the tile are read from there
+     * \param implementation output format implementation to be used
      * \param bbox bounding box of the tile
      * \param jobs_db reference to instance of JobsDatabase
      */
@@ -51,7 +56,7 @@ public:
     }
 
     /**
-     * build the vector tile by calling the method of the choosen implementation and update the jobs database
+     * \brief build the vector tile by calling the method of the choosen implementation and update the jobs database
      */
     void generate_vectortile() {
         // build path where to write the file

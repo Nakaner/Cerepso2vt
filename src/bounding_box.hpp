@@ -28,12 +28,19 @@ class BoundingBox {
 
 public:
     // This class is that simple that we do not hide any of its members.
+    /// x index of the tile this bounding box represents
     int m_x;
+    /// y index of the tile this bounding box represents
     int m_y;
+    /// zoom level of the tile this bounding box represents
     int m_zoom;
+    /// longitude at south-west corner
     double m_min_lon = 0;
+    /// latitude at south-west corner
     double m_min_lat = 0;
+    /// longitude at north-east corner
     double m_max_lon = 0;
+    /// latitude at north-east corner
     double m_max_lat = 0;
 
     BoundingBox() = delete;

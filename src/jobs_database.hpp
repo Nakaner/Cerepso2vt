@@ -12,7 +12,7 @@
 #include <string>
 
 /**
- * \brief struct for functions returning two coordinates by one call
+ * \brief struct for functions returning a x and a y coordinates by one call
  */
 struct xy_coord_t {
     int x = 0;
@@ -77,7 +77,7 @@ public:
      *
      * \param x x index of the tile
      * \param y y index of the tile
-     * \param z z index of the tile
+     * \param zoom zoom level of the tile
      * \param created creation date as ISO timestring (YYYY-MM-DDThh:mm:ssZ). This should be a null-terminated C string.
      * \param vectortile_path Location of the vector tile as null-terminated C string. This is a relative path relative to the base directory of the produced tiles.
      */
@@ -90,7 +90,7 @@ public:
      *
      * \param x x index of the tile
      * \param y y index of the tile
-     * \param z z index of the tile
+     * \param zoom zomm level of the tile
      */
     void cancel_job(int x, int y, int zoom);
 

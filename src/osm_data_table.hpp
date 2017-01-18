@@ -26,8 +26,8 @@
 class OSMDataTable : public postgres_drivers::Table {
 private:
     /**
-     * \brief contains the four parameters of the bounding box used for prepared statements which have only these
-     * four parameters
+     * \brief array which contains pointers to the four parameters of the bounding box used
+     * for prepared statements which have only these four parameters
      */
     char* m_bbox_parameters[4];
     char* m_min_lon;
@@ -37,7 +37,8 @@ private:
 
 #ifndef NDEBUG
     /**
-     * Check if bounding box parameters are valid. This check is not done in release builds (therefore surrounded by #ifndef NDEBUG).
+     * Check if bounding box parameters are valid. This check is not done in release builds
+     * (therefore surrounded by \c \#ifndef NDEBUG).
      */
     bool m_valid_bbox = false;
 #endif
@@ -73,7 +74,7 @@ public:
      *
      * The statement has to be registered first using postgres_drivers::Table::create_prepared_statement(const char*, std::string, int).
      *
-     * \param statement name
+     * \param name name of the prepared statement
      * \param param_count number of parameters of this prepared statement
      * \param param_values parameters
      *
@@ -87,7 +88,7 @@ public:
      * The statement has to be registered first using postgres_drivers::Table::create_prepared_statement(const char*, std::string, int).
      * It must have only four parameters and its where clause should only contain one condition: ST_Intersects()
      *
-     * \param statement name
+     * \param name name of the prepared statement
      *
      * \returns result of the query. You get ownership of the memory and have to call PQclear(PGresult*) to destroy it.
      */

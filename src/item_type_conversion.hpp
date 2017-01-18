@@ -21,6 +21,13 @@ class ItemTypeConversionImpl {
 public:
     using output_type = osmium::item_type;
 
+    /**
+     * \brief Convert to the output format (osmium::item_type).
+     *
+     * \param str string to be converted
+     *
+     * \return str converted to the output format
+     */
     output_type to_output_format(std::string& str) {
         if (str.length() > 1) {
             std::string message = "\"";

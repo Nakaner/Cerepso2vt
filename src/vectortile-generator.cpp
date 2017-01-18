@@ -19,7 +19,7 @@
 /**
  * \brief print program usage and terminate the program
  *
- * \param argv argument values (agrv argument of the main function)
+ * \param argv argument values (argv argument of the main function)
  */
 void print_usage(char* argv[]) {
     std::cerr << "Usage: " << argv[0] << " [OPTIONS] [X] [Y] [Z] [OUTFILE]\n" \

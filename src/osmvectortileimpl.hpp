@@ -44,6 +44,7 @@ private:
     /// reference to `relations` table
     OSMDataTable& m_relations_table;
 
+    /// default buffer size of Osmium's buffer
     static const size_t BUFFER_SIZE = 10240;
 
     /// buffer where all built OSM objects will reside
@@ -97,7 +98,6 @@ private:
      * \param member_types reference to the string which contains the string representation of the array from member_types column
      * \param member_ids reference to the string which contains the string representation of the array from member_ids column
      * \param member_roles reference to the string which contains the string representation of the array from member_roles column
-     * \param location_handler reference to the location handler
      */
     void add_relation_members(osmium::builder::RelationBuilder* relation_builder,
             std::string& member_types, std::string& member_ids, std::string& member_roles);
@@ -109,14 +109,6 @@ private:
      * \param id ID of the node
      */
     void check_node_availability(const osmium::object_id_type id);
-
-    void query_nodes_table();
-
-    void query_untagged_nodes_table();
-
-    void query_ways_table();
-
-    void query_relations_table();
 
     /**
      * \brief Write vectortile to file and insert a job into the jobs database
@@ -167,37 +159,24 @@ private:
 
     /**
      * \brief Get all missing nodes
-     *
-     * \param node_buffer buffer where to write the nodes
-     * \param missing_nodes nodes to be fetched from the database
-     *
-     * \throws std::runtime_error
      */
     void get_missing_nodes();
 
     /**
      * \brief Get all ways inside the tile
-     *
-     * \throws std::runtime_error
      */
     void get_ways_inside();
     /**
      * \brief Get all missing ways
-     *
-     * \throws std::runtime_error
      */
     void get_missing_ways();
 
     /**
      * \brief Get all relations inside the tile
-     *
-     * \throws std::runtime_error
      */
     void get_relations_inside();
     /**
      * \brief Get all missing relations
-     *
-     * \throws std::runtime_error
      */
     void get_missing_relations();
 

@@ -10,8 +10,11 @@
 
 
 struct VectortileGeneratorConfig {
-    std::string m_output_path = "/tmp/test.osm";
+    /// output path
+    std::string m_output_path = "-";
+    /// default file suffix, determines file format in single-tile mode
     std::string m_file_suffix = "osm.pbf";
+    /// default name of PostgreSQL database to be queried
     std::string m_database = "pgimportertest";
 
     /**
@@ -26,13 +29,44 @@ struct VectortileGeneratorConfig {
 
     /// Do a spatial query on `untagged_nodes` table?
     bool m_orphaned_nodes = false;
+    /// be verbose on command line
     bool m_verbose = false;
+
+    /**
+     * \brief Fetch relations from the database which are
+     * not included in the tile but referenced by relations
+     * which are included in the tile?
+     *
+     * See usage documentation for details.
+     */
     bool m_recurse_relations = false;
+
+    /**
+     * \brief Fetch ways from the database which are not included in
+     * the tile but referenced by relations which are included in the
+     * tile?
+     *
+     * See usage documentation for details.
+     */
     bool m_recurse_ways = false;
+
+    /**
+     * \brief Fetch nodes outside the tile which are missing?
+     *
+     * See usage documentation for details.
+     */
     bool m_recurse_nodes = false;
+
+    /**
+     * \brief overwrite output file(s)?
+     */
     bool m_force = false;
+
+    /// x index of the tile to be generated
     int m_x;
+    /// y index of the tile to be generated
     int m_y;
+    /// zoom level of the tile to be generated
     int m_zoom;
 };
 
