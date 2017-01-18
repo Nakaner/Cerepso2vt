@@ -42,4 +42,4 @@ necessary depencies are included in this repository.
 License
 -------
 This program is available under the terms of GNU General Public License 2.0 or
-newer. For the legal code of GNU General Public License 2.0 see the file COPYING.md in this directory.
+newer. For the legal code of GNU General Public License 2.0 see the file [COPYING.txt](COPYING.txt) in this directory.
