@@ -8,6 +8,7 @@
 #ifndef SRC_BOUNDING_BOX_HPP_
 #define SRC_BOUNDING_BOX_HPP_
 
+#include <vector>
 #include <osmium/geom/coordinates.hpp>
 #include <osmium/geom/projection.hpp>
 #include "vectortile_generator_config.hpp"
