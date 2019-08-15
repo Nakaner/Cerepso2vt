@@ -17,7 +17,7 @@
 #include <osmium/osm/location.hpp>
 #include <osmium/builder/osm_object_builder.hpp>
 #include <osmium/io/writer.hpp>
-#include <table.hpp>
+#include <postgres_drivers/table.hpp>
 #include "bounding_box.hpp"
 #include "osm_data_table.hpp"
 #include "vectortile_generator_config.hpp"

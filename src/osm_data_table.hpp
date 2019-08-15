@@ -9,7 +9,7 @@
 #define SRC_OSM_DATA_TABLE_HPP_
 
 #include <libpq-fe.h>
-#include <table.hpp>
+#include <postgres_drivers/table.hpp>
 #include "bounding_box.hpp"
 
 /**

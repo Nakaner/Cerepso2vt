@@ -10,7 +10,7 @@
 #include <getopt.h>
 #include <string>
 #include <memory>
-#include <columns.hpp>
+#include <postgres_drivers/columns.hpp>
 #include "osmvectortileimpl.hpp"
 #include "vectortile_generator_config.hpp"
 #include "vector_tile.hpp"
