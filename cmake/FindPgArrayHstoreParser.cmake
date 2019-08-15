@@ -2,7 +2,7 @@
 find_path(PGARRAYHSTOREPARSER_INCLUDE_DIR postgres_parser.hpp
     PATH_SUFFIXES include
     PATHS
-        ../pg-array-hstore-parser
+        contrib
 )
 
 set(PGARRAYHSTOREPARSER_INCLUDE_DIRS "${PGARRAYHSTOREPARSER_INCLUDE_DIR}")
