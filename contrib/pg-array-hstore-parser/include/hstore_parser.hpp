@@ -128,7 +128,7 @@ namespace pg_array_hstore_parser {
         /**
          * \param string_repr string representation of the hstore
          */
-        HStoreParser(std::string& string_repr) : PostgresParser<StringPair>(string_repr) {};
+        HStoreParser(const std::string& string_repr) : PostgresParser<StringPair>(string_repr) {};
 
         /**
          * has the parser reached the end of the hstore

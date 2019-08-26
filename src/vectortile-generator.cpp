@@ -11,6 +11,7 @@
 #include <string>
 #include <memory>
 #include <postgres_drivers/columns.hpp>
+#include "cerepso_data_access.hpp"
 #include "osmvectortileimpl.hpp"
 #include "vectortile_generator_config.hpp"
 #include "vector_tile.hpp"
@@ -189,7 +190,8 @@ int main(int argc, char* argv[]) {
     OSMDataTable relations_table ("relations", pg_driver_config, node_columns);
 
     // initialize the implmenation used to produce the vector tile
-    OSMVectorTileImpl vector_tile_impl (config, untagged_nodes_table, nodes_table, ways_linear_table, relations_table);
+    CerepsoDataAccess data_access {config, untagged_nodes_table, nodes_table, ways_linear_table, relations_table};
+    OSMVectorTileImpl<CerepsoDataAccess> vector_tile_impl {config, data_access};
 
     // initialize connection to jobs' database
     std::unique_ptr<JobsDatabase> jobs_db;
@@ -201,7 +203,7 @@ int main(int argc, char* argv[]) {
         if (config.m_verbose) {
             std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
         }
-        VectorTile<OSMVectorTileImpl> vector_tile(config, vector_tile_impl, bbox, jobs_db.get());
+        VectorTile<OSMVectorTileImpl<CerepsoDataAccess>> vector_tile(config, vector_tile_impl, bbox, jobs_db.get());
         vector_tile.generate_vectortile();
     }
 }

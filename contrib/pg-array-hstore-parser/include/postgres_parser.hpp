@@ -15,7 +15,7 @@ namespace pg_array_hstore_parser {
         /**
          * string representation we got from the database
          */
-        std::string& m_string_repr;
+        const std::string& m_string_repr;
 
         /**
          * current position inside #m_string_repr
@@ -32,7 +32,7 @@ namespace pg_array_hstore_parser {
         virtual void invalid_syntax(std::string error) = 0;
 
     public:
-        PostgresParser(std::string& string_representation) :
+        PostgresParser(const std::string& string_representation) :
             m_string_repr(string_representation) {};
 
         virtual ~PostgresParser() {}

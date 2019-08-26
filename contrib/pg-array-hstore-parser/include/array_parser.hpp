@@ -154,7 +154,7 @@ namespace pg_array_hstore_parser {
         }
 
     public:
-        ArrayParser(std::string& string_repr) : PostgresParser<typename TConversion::output_type>(string_repr) {
+        ArrayParser(const std::string& string_repr) : PostgresParser<typename TConversion::output_type>(string_repr) {
             m_max_length = string_repr.length();
         };
 

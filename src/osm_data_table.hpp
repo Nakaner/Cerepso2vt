@@ -60,7 +60,7 @@ public:
      *
      * \param bbox reference to an instance of BoudingBox
      */
-    void set_bbox(BoundingBox& bbox);
+    void set_bbox(const BoundingBox& bbox);
 
     /**
      * \brief Get a pointer to the array of bounding box parameters.

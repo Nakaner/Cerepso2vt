@@ -23,7 +23,7 @@ OSMDataTable::~OSMDataTable() {
     }
 }
 
-void OSMDataTable::set_bbox(BoundingBox& bbox) {
+void OSMDataTable::set_bbox(const BoundingBox& bbox) {
     sprintf(m_min_lon, "%f", bbox.m_min_lon);
     sprintf(m_min_lat, "%f", bbox.m_min_lat);
     sprintf(m_max_lon, "%f", bbox.m_max_lon);
