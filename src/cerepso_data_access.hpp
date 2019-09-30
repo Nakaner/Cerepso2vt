@@ -41,9 +41,11 @@ class CerepsoDataAccess {
      * This method chooses the suitable prepared statements which are dependend from the table type (point vs. way vs. …).
      * It overwrites the method of the superclass but calls the method of the superclass.
      *
+     * \param config configuration
+     *
      * \throws std::runtime_error
      */
-    void create_prepared_statements();
+    void create_prepared_statements(const VectortileGeneratorConfig& config);
 
     /**
      * \brief Parse the response of the database after querying nodes

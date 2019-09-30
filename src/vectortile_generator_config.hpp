@@ -68,6 +68,12 @@ struct VectortileGeneratorConfig {
     int m_y;
     /// zoom level of the tile to be generated
     int m_zoom;
+
+    /**
+     *  Cerepso database layout related: Does the untagged_nodes table contain a geometry field
+     *  or two distinct x and y columns of type int32?
+     */
+    bool m_untagged_nodes_geom = false;
 };
 
 

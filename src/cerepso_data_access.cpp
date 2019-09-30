@@ -14,10 +14,10 @@ CerepsoDataAccess::CerepsoDataAccess(VectortileGeneratorConfig& config, OSMDataT
     m_nodes_table(nodes_table),
     m_ways_table(ways_table),
     m_relations_table(relations_table) {
-    create_prepared_statements();
+    create_prepared_statements(config);
 }
 
-void CerepsoDataAccess::create_prepared_statements() {
+void CerepsoDataAccess::create_prepared_statements(const VectortileGeneratorConfig& config) {
     std::string query;
     query = (boost::format("SELECT tags, osm_id, osm_uid, osm_version, osm_lastmodified," \
             " osm_changeset, ST_X(geom), ST_Y(geom) FROM %1% WHERE ST_INTERSECTS(geom, " \
@@ -27,12 +27,20 @@ void CerepsoDataAccess::create_prepared_statements() {
             " osm_changeset, ST_X(geom), ST_Y(geom) FROM %1% WHERE osm_id = $1") % m_nodes_table.get_name()).str();
     m_nodes_table.create_prepared_statement("get_single_node_with_tags", query, 1);
 
-    query = (boost::format("SELECT osm_id, osm_uid, osm_version, osm_lastmodified," \
-            " osm_changeset, ST_X(geom), ST_Y(geom) FROM %1% WHERE ST_INTERSECTS(geom, " \
-            "ST_MakeEnvelope($1, $2, $3, $4, 4326))") % m_untagged_nodes_table.get_name()).str();
-    m_untagged_nodes_table.create_prepared_statement("get_nodes_without_tags", query, 4);
-    query = (boost::format("SELECT osm_uid, osm_version, osm_lastmodified," \
-            " osm_changeset, ST_X(geom), ST_Y(geom) FROM %1% WHERE osm_id = $1") % m_untagged_nodes_table.get_name()).str();
+    // retrieval of untagged nodes by location is not possible without a geometry column
+    if (config.m_untagged_nodes_geom) {
+        query = (boost::format("SELECT osm_id, osm_uid, osm_version, osm_lastmodified," \
+                " osm_changeset, ST_X(geom), ST_Y(geom) FROM %1% WHERE ST_INTERSECTS(geom, " \
+                "ST_MakeEnvelope($1, $2, $3, $4, 4326))") % m_untagged_nodes_table.get_name()).str();
+        m_untagged_nodes_table.create_prepared_statement("get_nodes_without_tags", query, 4);
+    }
+    if (config.m_untagged_nodes_geom) {
+        query = (boost::format("SELECT osm_uid, osm_version, osm_lastmodified," \
+                " osm_changeset, ST_X(geom), ST_Y(geom) FROM %1% WHERE osm_id = $1") % m_untagged_nodes_table.get_name()).str();
+    } else {
+        query = (boost::format("SELECT osm_uid, osm_version, osm_lastmodified," \
+                " osm_changeset, x, y FROM %1% WHERE osm_id = $1") % m_untagged_nodes_table.get_name()).str();
+    }
     m_untagged_nodes_table.create_prepared_statement("get_single_node_without_tags", query, 1);
 
     query = (boost::format("SELECT tags, osm_id, osm_uid, osm_version, osm_lastmodified," \
@@ -147,7 +155,15 @@ void CerepsoDataAccess::parse_node_query_result(PGresult* result, const bool wit
     }
     int tuple_count = PQntuples(result);
     for (int i = 0; i < tuple_count; i++) { // for each returned row
-        osmium::Location location(atof(PQgetvalue(result, i, 4 + field_offset)), atof(PQgetvalue(result, i, 5 + field_offset)));
+        double x, y;
+        if (!with_tags && !m_config.m_untagged_nodes_geom) {
+            x = osmium::Location::fix_to_double(atoi(PQgetvalue(result, i, 4 + field_offset)));
+            y = osmium::Location::fix_to_double(atoi(PQgetvalue(result, i, 5 + field_offset)));
+        } else {
+            x = atof(PQgetvalue(result, i, 4 + field_offset));
+            y = atof(PQgetvalue(result, i, 5 + field_offset));
+        }
+        osmium::Location location{x, y};
         osmium::object_id_type osm_id;
 
         if (id == 0 && with_tags) {

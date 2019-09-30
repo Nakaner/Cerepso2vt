@@ -110,6 +110,7 @@ int main(int argc, char* argv[]) {
             {"recurse-ways",  no_argument, 0, 'w'},
             {"recurse-nodes",  no_argument, 0, 'n'},
             {"force-overwrite",  no_argument, 0, 'f'},
+            {"untagged-nodes-geom",  no_argument, 0, 200},
             {"help",  no_argument, 0, 'h'},
             {0, 0, 0, 0}
         };
@@ -148,6 +149,9 @@ int main(int argc, char* argv[]) {
             case 'O':
                 config.m_orphaned_nodes = true;
                 break;
+            case 200:
+                config.m_untagged_nodes_geom = true;
+                break;
             case 'h':
                 print_usage(argv);
                 break;
@@ -184,9 +188,9 @@ int main(int argc, char* argv[]) {
     postgres_drivers::Columns relation_other_columns(pg_driver_config, postgres_drivers::TableType::RELATION_OTHER);
 
     // intialize connection to database tables
-    OSMDataTable nodes_table ("nodes", pg_driver_config, node_columns);
+    OSMDataTable nodes_table ("planet_osm_point", pg_driver_config, node_columns);
     OSMDataTable untagged_nodes_table ("untagged_nodes", pg_driver_config, node_columns);
-    OSMDataTable ways_linear_table ("ways", pg_driver_config, node_columns);
+    OSMDataTable ways_linear_table ("planet_osm_line", pg_driver_config, node_columns);
     OSMDataTable relations_table ("relations", pg_driver_config, node_columns);
 
     // initialize the implmenation used to produce the vector tile
