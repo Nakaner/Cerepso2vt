@@ -189,9 +189,9 @@ int main(int argc, char* argv[]) {
 
     // intialize connection to database tables
     OSMDataTable nodes_table ("planet_osm_point", pg_driver_config, node_columns);
-    OSMDataTable untagged_nodes_table ("untagged_nodes", pg_driver_config, node_columns);
-    OSMDataTable ways_linear_table ("planet_osm_line", pg_driver_config, node_columns);
-    OSMDataTable relations_table ("relations", pg_driver_config, node_columns);
+    OSMDataTable untagged_nodes_table ("untagged_nodes", pg_driver_config, untagged_nodes_columns);
+    OSMDataTable ways_linear_table ("planet_osm_line", pg_driver_config, way_linear_columns);
+    OSMDataTable relations_table ("relations", pg_driver_config, relation_other_columns);
 
     // initialize the implmenation used to produce the vector tile
     CerepsoDataAccess data_access {config, untagged_nodes_table, nodes_table, ways_linear_table, relations_table};
