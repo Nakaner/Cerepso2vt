@@ -98,6 +98,11 @@ void print_usage(char* argv[]) {
     "                                the bounding box of the tile and referenced\n" \
     "                                by a relation\n" \
     "  -f, --force-overwrite         overwrite output file if it exists\n" \
+    "  --metadata=OPTARG             OSM output only: import specified metadata fields. Permitted values are \"none\", \"all\" and\n" \
+    "                                one or many of the following values concatenated by \"+\": version,\n" \
+    "                                timestamp, user, uid, changeset.\n" \
+    "                                Valid examples: \"none\" (no metadata), \"all\" (all fields),\n" \
+    "                                \"version+timestamp\" (only version and timestamp).\n" \
     "The output format is detected automatically based on the suffix of the output file."<< std::endl;
     exit(1);
 }
@@ -111,13 +116,12 @@ int main(int argc, char* argv[]) {
             {"recurse-nodes",  no_argument, 0, 'n'},
             {"force-overwrite",  no_argument, 0, 'f'},
             {"untagged-nodes-geom",  no_argument, 0, 200},
+            {"metadata",  required_argument, 0, 201},
             {"help",  no_argument, 0, 'h'},
             {0, 0, 0, 0}
         };
 
     VectortileGeneratorConfig config;
-    // database related configuration is stored in a separate struct because it is defined by our Postgres access library
-    postgres_drivers::Config pg_driver_config;
     while (true) {
         int c = getopt_long(argc, argv, "d:rwnhfvj:O", long_options, 0);
         if (c == -1) {
@@ -126,7 +130,7 @@ int main(int argc, char* argv[]) {
 
         switch (c) {
             case 'd':
-                pg_driver_config.m_database_name = optarg;
+                config.m_postgres_config.m_database_name = optarg;
                 break;
             case 'j':
                 config.m_jobs_database = optarg;
@@ -151,6 +155,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 200:
                 config.m_untagged_nodes_geom = true;
+                break;
+            case 201:
+                config.m_postgres_config.metadata = osmium::metadata_options(optarg);
                 break;
             case 'h':
                 print_usage(argv);
@@ -182,19 +189,26 @@ int main(int argc, char* argv[]) {
     }
 
     // column definitions
-    postgres_drivers::Columns node_columns(pg_driver_config, postgres_drivers::TableType::POINT);
-    postgres_drivers::Columns untagged_nodes_columns(pg_driver_config, postgres_drivers::TableType::UNTAGGED_POINT);
-    postgres_drivers::Columns way_linear_columns(pg_driver_config, postgres_drivers::TableType::WAYS_LINEAR);
-    postgres_drivers::Columns relation_other_columns(pg_driver_config, postgres_drivers::TableType::RELATION_OTHER);
+    postgres_drivers::Columns node_columns(config.m_postgres_config, postgres_drivers::TableType::POINT);
+    postgres_drivers::Columns untagged_nodes_columns(config.m_postgres_config, postgres_drivers::TableType::UNTAGGED_POINT);
+    postgres_drivers::Columns way_linear_columns(config.m_postgres_config, postgres_drivers::TableType::WAYS_LINEAR);
+    postgres_drivers::Columns node_ways_columns(config.m_postgres_config, postgres_drivers::TableType::NODE_WAYS);
+    postgres_drivers::Columns relation_other_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_OTHER);
+    postgres_drivers::Columns node_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_NODES);
+    postgres_drivers::Columns way_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_WAYS);
 
     // intialize connection to database tables
-    OSMDataTable nodes_table ("planet_osm_point", pg_driver_config, node_columns);
-    OSMDataTable untagged_nodes_table ("untagged_nodes", pg_driver_config, untagged_nodes_columns);
-    OSMDataTable ways_linear_table ("planet_osm_line", pg_driver_config, way_linear_columns);
-    OSMDataTable relations_table ("relations", pg_driver_config, relation_other_columns);
+    OSMDataTable nodes_table ("planet_osm_point", config.m_postgres_config, node_columns);
+    OSMDataTable untagged_nodes_table ("untagged_nodes", config.m_postgres_config, untagged_nodes_columns);
+    OSMDataTable ways_linear_table ("planet_osm_line", config.m_postgres_config, way_linear_columns);
+    OSMDataTable node_ways_table ("node_ways", config.m_postgres_config, node_ways_columns);
+    OSMDataTable relations_table ("relations", config.m_postgres_config, relation_other_columns);
+    OSMDataTable node_relations_table ("node_relations", config.m_postgres_config, node_relations_columns);
+    OSMDataTable way_relations_table ("way_relations", config.m_postgres_config, way_relations_columns);
 
     // initialize the implmenation used to produce the vector tile
-    CerepsoDataAccess data_access {config, untagged_nodes_table, nodes_table, ways_linear_table, relations_table};
+    CerepsoDataAccess data_access {config, untagged_nodes_table, nodes_table, ways_linear_table,
+        relations_table, node_ways_table, node_relations_table, way_relations_table};
     OSMVectorTileImpl<CerepsoDataAccess> vector_tile_impl {config, data_access};
 
     // initialize connection to jobs' database

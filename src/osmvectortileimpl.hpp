@@ -89,15 +89,11 @@ private:
      * \param nodes_array reference to the string which contains the string representation of the array we received from
      * the database
      */
-    void add_node_refs(osmium::builder::WayBuilder* way_builder, const std::string& nodes_array) {
+    void add_node_refs(osmium::builder::WayBuilder* way_builder, const std::vector<postgres_drivers::MemberIdPos>& nodes_array) {
         osmium::builder::WayNodeListBuilder wnl_builder{m_buffer, way_builder};
-        pg_array_hstore_parser::ArrayParser<pg_array_hstore_parser::Int64Conversion> array_parser(nodes_array);
-        while (array_parser.has_next()) {
-            // If Int64Conversion::output_type instead of "int64_t", we can easily change the output type of Int64Conversion without
-            // having to change it here, too.
-            pg_array_hstore_parser::Int64Conversion::output_type node_ref = array_parser.get_next();
-            wnl_builder.add_node_ref(osmium::NodeRef(node_ref, osmium::Location()));
-            check_node_availability(node_ref);
+        for (auto& n : nodes_array) {
+            check_node_availability(n.id);
+            wnl_builder.add_node_ref(osmium::NodeRef(n.id, osmium::Location()));
         }
     }
 
@@ -110,27 +106,21 @@ private:
      * \param member_roles reference to the string which contains the string representation of the array from member_roles column
      */
     void add_relation_members(osmium::builder::RelationBuilder* relation_builder,
-            const std::string& member_types, const std::string& member_ids, const std::string& member_roles) {
+            const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos>& members) {
         osmium::builder::RelationMemberListBuilder rml_builder(m_buffer, relation_builder);
-        pg_array_hstore_parser::ArrayParser<ItemTypeConversion> array_parser_types(member_types);
-        pg_array_hstore_parser::ArrayParser<pg_array_hstore_parser::Int64Conversion> array_parser_ids(member_ids);
-        pg_array_hstore_parser::ArrayParser<pg_array_hstore_parser::StringConversion> array_parser_roles(member_roles);
-        while (array_parser_types.has_next() && array_parser_ids.has_next() && array_parser_roles.has_next()) {
-            ItemTypeConversion::output_type type = array_parser_types.get_next();
-            pg_array_hstore_parser::Int64Conversion::output_type id = array_parser_ids.get_next();
-            pg_array_hstore_parser::StringConversion::output_type role = array_parser_roles.get_next();
-            rml_builder.add_member(type, id, role.c_str());
-            if (type == osmium::item_type::node && m_config.m_recurse_nodes) {
-                check_node_availability(id);
-            } else if (type == osmium::item_type::way && m_config.m_recurse_ways) {
-                std::set<osmium::object_id_type>::iterator ways_it = m_ways_got.find(id);
+        for (auto& m : members) {
+            rml_builder.add_member(m.type, m.id, m.role.c_str());
+            if (m.type == osmium::item_type::node && m_config.m_recurse_nodes) {
+                check_node_availability(m.id);
+            } else if (m.type == osmium::item_type::way && m_config.m_recurse_ways) {
+                std::set<osmium::object_id_type>::iterator ways_it = m_ways_got.find(m.id);
                 if (ways_it == m_ways_got.end()) {
-                    m_missing_ways.insert(id);
+                    m_missing_ways.insert(m.id);
                 }
-            } else if (type == osmium::item_type::relation && m_config.m_recurse_relations) {
-                std::set<osmium::object_id_type>::iterator relations_it = m_relations_got.find(id);
+            } else if (m.type == osmium::item_type::relation && m_config.m_recurse_relations) {
+                std::set<osmium::object_id_type>::iterator relations_it = m_relations_got.find(m.id);
                 if (relations_it == m_relations_got.end()) {
-                    m_missing_relations.insert(id);
+                    m_missing_relations.insert(m.id);
                 }
             }
         }
@@ -189,9 +179,10 @@ private:
      * \param timestamp OSM object timestamp
      * \param tags tags to add
      */
-    void add_relation(const osmium::object_id_type id, const std::string member_ids,
-            const std::string member_types, const std::string member_roles, const char* version,
-            const char* changeset, const char* uid, const char* timestamp, const std::string tags) {
+    void add_relation(const osmium::object_id_type id,
+            const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members,
+            const char* version, const char* changeset, const char* uid, const char* timestamp,
+            const std::string tags) {
         {
             osmium::builder::RelationBuilder relation_builder(m_buffer);
             osmium::Relation& relation = static_cast<osmium::Relation&>(relation_builder.object());
@@ -203,7 +194,7 @@ private:
             relation.set_timestamp(timestamp);
             relation_builder.set_user("");
             add_tags(&relation_builder, tags);
-            add_relation_members(&relation_builder, member_types, member_ids, member_roles);
+            add_relation_members(&relation_builder, members);
         }
         m_buffer.commit();
     }
@@ -214,14 +205,14 @@ private:
      * This method is intended to be called by the data source implementation.
      *
      * \param id OSM object ID
-     * \param nodes nodes as an PostgreSQL array of integers
+     * \param nodes node references
      * \param version OSM object version
      * \param changeset OSM object changeset attribute
      * \param uid OSM object UID attribute
      * \param timestamp OSM object timestamp
      * \param tags tags to add
      */
-    void add_way(const osmium::object_id_type id, const std::string nodes, const char* version,
+    void add_way(const osmium::object_id_type id, const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version,
             const char* changeset, const char* uid, const char* timestamp, const std::string tags) {
         {
             osmium::builder::WayBuilder way_builder(m_buffer);
@@ -309,18 +300,18 @@ public:
             }
         );
         m_data_access.set_add_way_callback([this](const osmium::object_id_type id,
-            const std::string nodes, const char* version, const char* changeset, const char* uid,
+            const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version, const char* changeset, const char* uid,
             const char* timestamp, const std::string tags) {
                 this->add_way(id, std::move(nodes), version, changeset, uid, timestamp, tags);
                 this->m_buffer.commit();
             }
         );
         m_data_access.set_add_relation_callback([this](const osmium::object_id_type id,
-            const std::string member_ids, const std::string member_types,
-            const std::string member_roles, const char* version, const char* changeset,
-            const char* uid, const char* timestamp, const std::string tags) {
-                this->add_relation(id, std::move(member_ids), std::move(member_types),
-                        std::move(member_roles), version, changeset, uid, timestamp, tags);
+            const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members,
+            const char* version, const char* changeset, const char* uid, const char* timestamp,
+            const std::string tags) {
+                this->add_relation(id, std::move(members), version, changeset, uid, timestamp,
+                        tags);
                 this->m_buffer.commit();
             }
         );

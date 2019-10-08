@@ -8,14 +8,16 @@
 #ifndef SRC_VECTORTILE_GENERATOR_CONFIG_HPP_
 #define SRC_VECTORTILE_GENERATOR_CONFIG_HPP_
 
+#include <postgres_drivers/config.hpp>
 
 struct VectortileGeneratorConfig {
+    /// database access related configuration
+    postgres_drivers::Config m_postgres_config;
+
     /// output path
     std::string m_output_path = "-";
     /// default file suffix, determines file format in single-tile mode
     std::string m_file_suffix = "osm.pbf";
-    /// default name of PostgreSQL database to be queried
-    std::string m_database = "pgimportertest";
 
     /**
      * \brief name of the database where the processing jobs are managed
@@ -74,6 +76,13 @@ struct VectortileGeneratorConfig {
      *  or two distinct x and y columns of type int32?
      */
     bool m_untagged_nodes_geom = false;
+
+    VectortileGeneratorConfig() :
+        m_x(),
+        m_y(),
+        m_zoom() {
+        m_postgres_config.m_database_name = "pgimportertest";
+    }
 };
 
 

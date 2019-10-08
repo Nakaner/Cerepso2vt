@@ -20,6 +20,7 @@
 #include "vectortile_generator_config.hpp"
 
 class CerepsoDataAccess {
+
     /// reference to the program configuration
     VectortileGeneratorConfig& m_config;
     /// reference to `untagged_nodes` table
@@ -30,10 +31,33 @@ class CerepsoDataAccess {
     OSMDataTable& m_ways_table;
     /// reference to `relations` table
     OSMDataTable& m_relations_table;
+    /// reference to `node_ways` table
+    OSMDataTable& m_node_ways_table;
+    /// reference to `node_relations` table
+    OSMDataTable& m_node_relations_table;
+    /// reference to `way_relations` table
+    OSMDataTable& m_way_relations_table;
+
+    int m_metadata_field_count;
+    int m_user_index = -1;
+    int m_uid_index = -1;
+    int m_version_index = -1;
+    int m_last_modified_index = -1;
+    int m_changeset_index = -1;
 
     osm_vector_tile_impl::node_callback_type m_add_node_callback;
     osm_vector_tile_impl::way_callback_type m_add_way_callback;
     osm_vector_tile_impl::relation_callback_type m_add_relation_callback;
+
+    /**
+     * Set offsets for metadata fields in the SQL responses.
+     */
+    void set_metadata_field_count();
+
+    /**
+     * Get the beginning of an SQL SELECT string containing all requested metadata fields.
+     */
+    std::string metadata_select_str();
 
     /**
      * create all necessary prepared statements for this table
@@ -41,11 +65,9 @@ class CerepsoDataAccess {
      * This method chooses the suitable prepared statements which are dependend from the table type (point vs. way vs. …).
      * It overwrites the method of the superclass but calls the method of the superclass.
      *
-     * \param config configuration
-     *
      * \throws std::runtime_error
      */
-    void create_prepared_statements(const VectortileGeneratorConfig& config);
+    void create_prepared_statements();
 
     /**
      * \brief Parse the response of the database after querying nodes
@@ -80,7 +102,9 @@ class CerepsoDataAccess {
 
 public:
     CerepsoDataAccess(VectortileGeneratorConfig& config, OSMDataTable& untagged_nodes_table,
-            OSMDataTable& nodes_table, OSMDataTable& ways_table, OSMDataTable& relations_table);
+            OSMDataTable& nodes_table, OSMDataTable& ways_table, OSMDataTable& relations_table,
+            OSMDataTable& node_ways_table, OSMDataTable& node_relations_table,
+            OSMDataTable& way_relations_table);
 
     void set_bbox(const BoundingBox& bbox);
 
