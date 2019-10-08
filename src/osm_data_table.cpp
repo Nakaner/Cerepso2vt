@@ -9,29 +9,22 @@
 #include "osm_data_table.hpp"
 
 OSMDataTable::OSMDataTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns) :
-        postgres_drivers::Table(table_name, config, columns) {
-    m_min_lon = new char[25];
-    m_min_lat = new char[25];
-    m_max_lon = new char[25];
-    m_max_lat = new char[25];
-}
-
-OSMDataTable::~OSMDataTable() {
-    // delete
-    for (size_t i = 0; i < 4; ++i) {
-        delete[] m_bbox_parameters[i];
-    }
+        postgres_drivers::Table(table_name, config, columns),
+    m_min_lon(new char[25]),
+    m_min_lat(new char[25]),
+    m_max_lon(new char[25]),
+    m_max_lat(new char[25]) {
 }
 
 void OSMDataTable::set_bbox(const BoundingBox& bbox) {
-    sprintf(m_min_lon, "%f", bbox.m_min_lon);
-    sprintf(m_min_lat, "%f", bbox.m_min_lat);
-    sprintf(m_max_lon, "%f", bbox.m_max_lon);
-    sprintf(m_max_lat, "%f", bbox.m_max_lat);
-    m_bbox_parameters[0] = m_min_lon;
-    m_bbox_parameters[1] = m_min_lat;
-    m_bbox_parameters[2] = m_max_lon;
-    m_bbox_parameters[3] = m_max_lat;
+    sprintf(m_min_lon.get(), "%f", bbox.m_min_lon);
+    sprintf(m_min_lat.get(), "%f", bbox.m_min_lat);
+    sprintf(m_max_lon.get(), "%f", bbox.m_max_lon);
+    sprintf(m_max_lat.get(), "%f", bbox.m_max_lat);
+    m_bbox_parameters[0] = m_min_lon.get();
+    m_bbox_parameters[1] = m_min_lat.get();
+    m_bbox_parameters[2] = m_max_lon.get();
+    m_bbox_parameters[3] = m_max_lat.get();
 #ifndef NDEBUG
     m_valid_bbox = true;
 #endif

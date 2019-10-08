@@ -30,10 +30,10 @@ private:
      * for prepared statements which have only these four parameters
      */
     char* m_bbox_parameters[4];
-    char* m_min_lon;
-    char* m_min_lat;
-    char* m_max_lon;
-    char* m_max_lat;
+    std::unique_ptr<char> m_min_lon;
+    std::unique_ptr<char> m_min_lat;
+    std::unique_ptr<char> m_max_lon;
+    std::unique_ptr<char> m_max_lat;
 
 #ifndef NDEBUG
     /**
@@ -52,8 +52,6 @@ private:
 
 public:
     OSMDataTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns);
-
-    ~OSMDataTable();
 
     /**
      * set/change the bounding box which is currently used
