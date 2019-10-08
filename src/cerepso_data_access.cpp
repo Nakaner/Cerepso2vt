@@ -170,7 +170,7 @@ void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmi
     int tuple_count = PQntuples(result);
     for (int i = 0; i < tuple_count; i++) { // for each returned row
         std::string tags_hstore = PQgetvalue(result, i, tags_field_offset);
-        const osmium::object_id_type osm_id = (id == 0) ? id : strtoll(PQgetvalue(result, i, id_field_offset), nullptr, 10);
+        const osmium::object_id_type osm_id = (id == 0) ? strtoll(PQgetvalue(result, i, id_field_offset), nullptr, 10) : id;
         const char* version = m_config.m_postgres_config.metadata.version() ? PQgetvalue(result, i, m_version_index) : nullptr;
         const char* uid = m_config.m_postgres_config.metadata.uid() ? PQgetvalue(result, i, m_uid_index) : nullptr;
         const char* timestamp = m_config.m_postgres_config.metadata.timestamp() ? PQgetvalue(result, i, m_last_modified_index) : nullptr;
