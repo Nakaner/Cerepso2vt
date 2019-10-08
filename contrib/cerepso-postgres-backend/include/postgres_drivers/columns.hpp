@@ -18,36 +18,46 @@
 
 namespace postgres_drivers {
 
+    namespace detail {
+        using table_type_base_type = unsigned char;
+        constexpr table_type_base_type table_type_osm_object_mask = 0x10;
+        constexpr table_type_base_type table_type_osm_member_mask = 0x20;
+    }
+
     /**
      * \brief Typed enum which defines the geometry type of the table.
      *
      * The types are different from simple features because OSM does not
      * follow OGC Simple Feature Specification. For example, nod
      */
-    enum class TableType : char {
+    enum class TableType : detail::table_type_base_type {
         /// other
-        OTHER = 0,
+        OTHER = detail::table_type_osm_object_mask,
         /// nodes with tags
-        POINT = 1,
+        POINT = detail::table_type_osm_object_mask + 1,
         /// nodes without tags
-        UNTAGGED_POINT = 2,
+        UNTAGGED_POINT = detail::table_type_osm_object_mask + 2,
         /// ways
-        WAYS_LINEAR = 3,
+        WAYS_LINEAR = detail::table_type_osm_object_mask + 3,
         /// ways which are polygons
-        WAYS_POLYGON = 4,
+        WAYS_POLYGON = detail::table_type_osm_object_mask + 4,
         /// relations which are multipolygons
-        RELATION_POLYGON = 5,
+        RELATION_POLYGON = detail::table_type_osm_object_mask + 5,
         /// relations
-        RELATION_OTHER = 6,
+        RELATION_OTHER = detail::table_type_osm_object_mask + 6,
         /// areas (ways and multipolygon/boundary relations)
-        AREA = 7,
+        AREA = detail::table_type_osm_object_mask + 7,
         /// mapping of nodes to ways using them
-        NODE_WAYS = 8,
+        NODE_WAYS = detail::table_type_osm_member_mask,
         /// mapping of nodes to relations using them
-        RELATION_MEMBER_NODES = 9,
+        RELATION_MEMBER_NODES = detail::table_type_osm_member_mask + 1,
         /// mapping of ways to relations using them
-        RELATION_MEMBER_WAYS = 10
+        RELATION_MEMBER_WAYS = detail::table_type_osm_member_mask + 2
     };
+
+    inline bool is_osm_object_table_type(const TableType type) noexcept {
+        return (static_cast<detail::table_type_base_type>(type) & detail::table_type_osm_object_mask) == detail::table_type_osm_object_mask;
+    }
 
     enum class ColumnType : char {
         NONE = 0,
@@ -101,7 +111,8 @@ namespace postgres_drivers {
         NODE_ID = 26,
         WAY_ID = 27,
         LONGITUDE = 28,
-        LATITUDE = 29
+        LATITUDE = 29,
+        ROLE = 30
     };
 
     inline std::string column_type_to_str(const ColumnType c, const int epsg = 0) {
@@ -255,7 +266,7 @@ namespace postgres_drivers {
         TableType m_type;
 
         void add_hstore_column(Config& config, TableType type) {
-            if (config.tags_hstore && type != TableType::UNTAGGED_POINT) {
+            if (config.tags_hstore) {
                 m_columns.emplace_back("tags", ColumnType::HSTORE, ColumnClass::TAGS_OTHER);
             }
         }
@@ -271,35 +282,31 @@ namespace postgres_drivers {
                 m_type(type)/*,
                 m_tags()*/ {
             init(config, type);
-            if (type != TableType::NODE_WAYS && type != TableType::RELATION_MEMBER_NODES
-                    && type != TableType::RELATION_MEMBER_WAYS && type != TableType::OTHER) {
-                add_hstore_column(config, type);
-            }
         }
 
         void init(Config& config, TableType type) {
-            if (type != TableType::NODE_WAYS && type != TableType::RELATION_MEMBER_NODES
-                    && type != TableType::RELATION_MEMBER_WAYS) {
+            if (is_osm_object_table_type(type)) {
                 m_columns.emplace_back("osm_id", ColumnType::BIGINT, ColumnClass::OSM_ID);
-            }
-            if (config.metadata.user()) {
-                m_columns.emplace_back("osm_user", ColumnType::TEXT, ColumnClass::USERNAME);
-            }
-            if (config.metadata.uid()) {
-                m_columns.emplace_back("osm_uid", ColumnType::BIGINT, ColumnClass::UID);
-            }
-            if (config.metadata.version()) {
-                m_columns.emplace_back("osm_version", ColumnType::INT, ColumnClass::VERSION);
-            }
-            if (config.metadata.timestamp()) {
-                m_columns.emplace_back("osm_lastmodified", ColumnType::TEXT, ColumnClass::TIMESTAMP);
-            }
-            if (config.metadata.changeset()) {
-                m_columns.emplace_back("osm_changeset", ColumnType::BIGINT, ColumnClass::CHANGESET);
+                if (config.metadata.user()) {
+                    m_columns.emplace_back("osm_user", ColumnType::TEXT, ColumnClass::USERNAME);
+                }
+                if (config.metadata.uid()) {
+                    m_columns.emplace_back("osm_uid", ColumnType::BIGINT, ColumnClass::UID);
+                }
+                if (config.metadata.version()) {
+                    m_columns.emplace_back("osm_version", ColumnType::INT, ColumnClass::VERSION);
+                }
+                if (config.metadata.timestamp()) {
+                    m_columns.emplace_back("osm_lastmodified", ColumnType::TEXT, ColumnClass::TIMESTAMP);
+                }
+                if (config.metadata.changeset()) {
+                    m_columns.emplace_back("osm_changeset", ColumnType::BIGINT, ColumnClass::CHANGESET);
+                }
             }
             switch (type) {
             case TableType::POINT :
                 m_columns.emplace_back("geom", ColumnType::POINT, 4326);
+                add_hstore_column(config, type);
                 break;
             case TableType::UNTAGGED_POINT :
                 m_columns.emplace_back("x", ColumnType::INT, ColumnClass::LONGITUDE);
@@ -307,12 +314,15 @@ namespace postgres_drivers {
                 break;
             case TableType::WAYS_LINEAR :
                 m_columns.emplace_back("geom", ColumnType::LINESTRING, 4326);
+                add_hstore_column(config, type);
                 break;
             case TableType::WAYS_POLYGON :
                 m_columns.emplace_back("geom", ColumnType::MULTIPOLYGON, 4326);
+                add_hstore_column(config, type);
                 break;
             case TableType::RELATION_POLYGON :
                 m_columns.emplace_back("geom", ColumnType::MULTIPOLYGON, 4326);
+                add_hstore_column(config, type);
 //                if (config.updateable) {
 //                    m_columns.emplace_back("member_ids", ColumnType::BIGINT_ARRAY);
 //                    m_columns.emplace_back("member_types", ColumnType::CHAR_ARRAY);
@@ -324,9 +334,11 @@ namespace postgres_drivers {
                 m_columns.emplace_back("member_ids", ColumnType::BIGINT_ARRAY, ColumnClass::MEMBER_IDS);
                 m_columns.emplace_back("member_types", ColumnType::CHAR_ARRAY, ColumnClass::MEMBER_TYPES);
                 m_columns.emplace_back("member_roles", ColumnType::TEXT_ARRAY, ColumnClass::MEMBER_ROLES);
+                add_hstore_column(config, type);
                 break;
             case TableType::AREA :
                 m_columns.emplace_back("geom", ColumnType::MULTIPOLYGON, 4326);
+                add_hstore_column(config, type);
                 break;
             case TableType::NODE_WAYS :
                 m_columns.emplace_back("way_id", ColumnType::BIGINT, ColumnClass::OSM_ID);
@@ -336,10 +348,14 @@ namespace postgres_drivers {
             case TableType::RELATION_MEMBER_NODES :
                 m_columns.emplace_back("node_id", ColumnType::BIGINT, ColumnClass::NODE_ID);
                 m_columns.emplace_back("relation_id", ColumnType::BIGINT, ColumnClass::OSM_ID);
+                m_columns.emplace_back("position", ColumnType::SMALLINT, ColumnClass::OTHER);
+                m_columns.emplace_back("role", ColumnType::TEXT, ColumnClass::ROLE);
                 break;
             case TableType::RELATION_MEMBER_WAYS :
                 m_columns.emplace_back("way_id", ColumnType::BIGINT, ColumnClass::WAY_ID);
                 m_columns.emplace_back("relation_id", ColumnType::BIGINT, ColumnClass::OSM_ID);
+                m_columns.emplace_back("position", ColumnType::SMALLINT, ColumnClass::OTHER);
+                m_columns.emplace_back("role", ColumnType::TEXT, ColumnClass::ROLE);
                 break;
             case TableType::OTHER :
                 break;
@@ -363,9 +379,6 @@ namespace postgres_drivers {
             }
             for (auto& k : nocolumn_keys) {
                 m_tags_filter.add_rule(true, k);
-            }
-            if (type != TableType::NODE_WAYS && type != TableType::OTHER) {
-                add_hstore_column(config, type);
             }
         }
 
