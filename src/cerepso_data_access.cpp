@@ -298,7 +298,6 @@ void CerepsoDataAccess::parse_way_query_result(PGresult* result, const osmium::o
     if (id == 0) {
         ++tags_field_offset;
     }
-    int other_field_offset = tags_field_offset + 1;
     int tuple_count = PQntuples(result);
     for (int i = 0; i < tuple_count; i++) { // for each returned row
         std::string tags_hstore = PQgetvalue(result, i, tags_field_offset);
