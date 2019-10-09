@@ -19,6 +19,10 @@
 #include "osm_vector_tile_impl_definitions.hpp"
 #include "vectortile_generator_config.hpp"
 
+/**
+ * Retrieve nodes, ways and relations from database tables imported with Cerepso and call the
+ * callbacks of OSMVectorTileImpl to add the OSM objects to the output file.
+ */
 class CerepsoDataAccess {
 
     /// reference to the program configuration
