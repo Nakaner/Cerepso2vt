@@ -179,7 +179,7 @@ void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmi
         char* param_values[1];
         char param[25];
         param_values[0] = param;
-        sprintf(param, "%ld", id);
+        sprintf(param, "%ld", osm_id);
         PGresult* result_members = m_node_relations_table.run_prepared_statement("get_relation_nodes", 1, param_values);
         std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members;
         int tuples = PQntuples(result_members);
