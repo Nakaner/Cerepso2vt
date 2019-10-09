@@ -37,6 +37,8 @@ class CerepsoDataAccess {
     OSMDataTable& m_node_relations_table;
     /// reference to `way_relations` table
     OSMDataTable& m_way_relations_table;
+    /// reference to `relation_relations` table
+    OSMDataTable& m_relation_relations_table;
 
     int m_metadata_field_count;
     int m_user_index = -1;
@@ -104,7 +106,7 @@ public:
     CerepsoDataAccess(VectortileGeneratorConfig& config, OSMDataTable& untagged_nodes_table,
             OSMDataTable& nodes_table, OSMDataTable& ways_table, OSMDataTable& relations_table,
             OSMDataTable& node_ways_table, OSMDataTable& node_relations_table,
-            OSMDataTable& way_relations_table);
+            OSMDataTable& way_relations_table, OSMDataTable& relation_relations_table);
 
     void set_bbox(const BoundingBox& bbox);
 

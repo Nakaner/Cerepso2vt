@@ -11,7 +11,7 @@
 CerepsoDataAccess::CerepsoDataAccess(VectortileGeneratorConfig& config, OSMDataTable& untagged_nodes_table,
         OSMDataTable& nodes_table, OSMDataTable& ways_table, OSMDataTable& relations_table,
         OSMDataTable& node_ways_table, OSMDataTable& node_relations_table,
-        OSMDataTable& way_relations_table) :
+        OSMDataTable& way_relations_table, OSMDataTable& relation_relations_table) :
     m_config(config),
     m_untagged_nodes_table(untagged_nodes_table),
     m_nodes_table(nodes_table),
@@ -19,7 +19,8 @@ CerepsoDataAccess::CerepsoDataAccess(VectortileGeneratorConfig& config, OSMDataT
     m_relations_table(relations_table),
     m_node_ways_table(node_ways_table),
     m_node_relations_table(node_relations_table),
-    m_way_relations_table(way_relations_table) {
+    m_way_relations_table(way_relations_table),
+    m_relation_relations_table(relation_relations_table) {
     set_metadata_field_count();
     create_prepared_statements();
 }
@@ -133,13 +134,13 @@ void CerepsoDataAccess::create_prepared_statements() {
     query = (boost::format(query) % m_relations_table.get_name()).str();
     m_ways_table.create_prepared_statement("get_single_relation", query, 1);
 
-    query = (boost::format("SELECT node_id, role, position FROM %1% WHERE relation_id = $1")
-        % m_node_relations_table.get_name()).str();
-    m_node_relations_table.create_prepared_statement("get_relation_nodes", query, 1);
-
-    query = (boost::format("SELECT way_id, role, position FROM %1% WHERE relation_id = $1")
-        % m_way_relations_table.get_name()).str();
-    m_way_relations_table.create_prepared_statement("get_relation_ways", query, 1);
+    std::string get_rel_members_template = "SELECT member_id, role, position FROM %1% WHERE relation_id = $1";
+    query = (boost::format(get_rel_members_template) % m_node_relations_table.get_name()).str();
+    m_node_relations_table.create_prepared_statement("get_relation_members", query, 1);
+    query = (boost::format(get_rel_members_template) % m_way_relations_table.get_name()).str();
+    m_way_relations_table.create_prepared_statement("get_relation_members", query, 1);
+    query = (boost::format(get_rel_members_template) % m_relation_relations_table.get_name()).str();
+    m_relation_relations_table.create_prepared_statement("get_relation_members", query, 1);
 }
 
 void CerepsoDataAccess::set_bbox(const BoundingBox& bbox) {
@@ -180,7 +181,7 @@ void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmi
         char param[25];
         param_values[0] = param;
         sprintf(param, "%ld", osm_id);
-        PGresult* result_members = m_node_relations_table.run_prepared_statement("get_relation_nodes", 1, param_values);
+        PGresult* result_members = m_node_relations_table.run_prepared_statement("get_relation_members", 1, param_values);
         std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members;
         int tuples = PQntuples(result_members);
         for (int j = 0; j < tuples; ++j) {
@@ -190,7 +191,7 @@ void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmi
             members.emplace_back(ref, osmium::item_type::node, std::move(role), pos);
         }
         PQclear(result_members);
-        result_members = m_way_relations_table.run_prepared_statement("get_relation_ways", 1, param_values);
+        result_members = m_way_relations_table.run_prepared_statement("get_relation_members", 1, param_values);
         tuples = PQntuples(result_members);
         for (int j = 0; j < tuples; ++j) {
             osmium::object_id_type ref = strtoll(PQgetvalue(result_members, j, 0), nullptr, 10);
@@ -199,6 +200,14 @@ void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmi
             members.emplace_back(ref, osmium::item_type::way, std::move(role), pos);
         }
         PQclear(result_members);
+        result_members = m_relation_relations_table.run_prepared_statement("get_relation_members", 1, param_values);
+        tuples = PQntuples(result_members);
+        for (int j = 0; j < tuples; ++j) {
+            osmium::object_id_type ref = strtoll(PQgetvalue(result_members, j, 0), nullptr, 10);
+            std::string role = PQgetvalue(result_members, j, 1);
+            int pos = atoi(PQgetvalue(result_members, j, 2));
+            members.emplace_back(ref, osmium::item_type::relation, std::move(role), pos);
+        }
         std::sort(members.begin(), members.end());
         m_add_relation_callback(osm_id, std::move(members), version, changeset, uid, timestamp,
                 std::move(tags_hstore));

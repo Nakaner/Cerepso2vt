@@ -196,6 +196,7 @@ int main(int argc, char* argv[]) {
     postgres_drivers::Columns relation_other_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_OTHER);
     postgres_drivers::Columns node_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_NODES);
     postgres_drivers::Columns way_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_WAYS);
+    postgres_drivers::Columns relation_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_RELATIONS);
 
     // intialize connection to database tables
     OSMDataTable nodes_table ("planet_osm_point", config.m_postgres_config, node_columns);
@@ -205,10 +206,11 @@ int main(int argc, char* argv[]) {
     OSMDataTable relations_table ("relations", config.m_postgres_config, relation_other_columns);
     OSMDataTable node_relations_table ("node_relations", config.m_postgres_config, node_relations_columns);
     OSMDataTable way_relations_table ("way_relations", config.m_postgres_config, way_relations_columns);
+    OSMDataTable relation_relations_table ("relation_relations", config.m_postgres_config, relation_relations_columns);
 
     // initialize the implmenation used to produce the vector tile
     CerepsoDataAccess data_access {config, untagged_nodes_table, nodes_table, ways_linear_table,
-        relations_table, node_ways_table, node_relations_table, way_relations_table};
+        relations_table, node_ways_table, node_relations_table, way_relations_table, relation_relations_table};
     OSMVectorTileImpl<CerepsoDataAccess> vector_tile_impl {config, data_access};
 
     // initialize connection to jobs' database
