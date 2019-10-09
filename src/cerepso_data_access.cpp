@@ -184,18 +184,18 @@ void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmi
         std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members;
         int tuples = PQntuples(result_members);
         for (int j = 0; j < tuples; ++j) {
-            osmium::object_id_type ref = strtoll(PQgetvalue(result, i, 0), nullptr, 10);
-            std::string role = PQgetvalue(result, i, 1);
-            int pos = atoi(PQgetvalue(result, i, 2));
+            osmium::object_id_type ref = strtoll(PQgetvalue(result_members, j, 0), nullptr, 10);
+            std::string role = PQgetvalue(result_members, j, 1);
+            int pos = atoi(PQgetvalue(result_members, j, 2));
             members.emplace_back(ref, osmium::item_type::node, std::move(role), pos);
         }
         PQclear(result_members);
         result_members = m_way_relations_table.run_prepared_statement("get_relation_ways", 1, param_values);
         tuples = PQntuples(result_members);
         for (int j = 0; j < tuples; ++j) {
-            osmium::object_id_type ref = strtoll(PQgetvalue(result, i, 0), nullptr, 10);
-            std::string role = PQgetvalue(result, i, 1);
-            int pos = atoi(PQgetvalue(result, i, 2));
+            osmium::object_id_type ref = strtoll(PQgetvalue(result_members, j, 0), nullptr, 10);
+            std::string role = PQgetvalue(result_members, j, 1);
+            int pos = atoi(PQgetvalue(result_members, j, 2));
             members.emplace_back(ref, osmium::item_type::way, std::move(role), pos);
         }
         PQclear(result_members);
@@ -254,9 +254,9 @@ void CerepsoDataAccess::parse_node_query_result(PGresult* result, const bool wit
     if (id == 0) {
         ++tags_field_offset;
     }
-    int other_field_offset = tags_field_offset + 1;
+    int other_field_offset = with_tags ? tags_field_offset + 1 : tags_field_offset;
     int tuple_count = PQntuples(result);
-    for (int i = 0; i < tuple_count; i++) { // for each returned row
+    for (int i = 0; i < tuple_count; ++i) { // for each returned row
         double x, y;
         if (!with_tags && !m_config.m_untagged_nodes_geom) {
             x = osmium::Location::fix_to_double(atoi(PQgetvalue(result, i, other_field_offset)));
@@ -311,7 +311,7 @@ void CerepsoDataAccess::parse_way_query_result(PGresult* result, const osmium::o
         std::vector<postgres_drivers::MemberIdPos> node_ids;
         int node_ways_tuples = PQntuples(result_member_nodes);
         for (int j = 0; j < node_ways_tuples; ++j) {
-            node_ids.emplace_back(strtoll(PQgetvalue(result, i, 0), nullptr, 10), atoi(PQgetvalue(result, i, 1)));
+            node_ids.emplace_back(strtoll(PQgetvalue(result_member_nodes, j, 0), nullptr, 10), atoi(PQgetvalue(result_member_nodes, j, 1)));
         }
         std::sort(node_ids.begin(), node_ids.end());
         PQclear(result_member_nodes);

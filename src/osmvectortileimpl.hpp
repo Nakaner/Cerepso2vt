@@ -135,6 +135,10 @@ private:
     void check_node_availability(const osmium::object_id_type id) {
         try {
             osmium::Location location = m_location_handler.get_node_location(id);
+            if (!location.valid()) {
+                m_missing_nodes.insert(id);
+                return;
+            }
         } catch (osmium::not_found& e) {
             // This exception is thrown if the node could not be found in the location handler.
             m_missing_nodes.insert(id);
