@@ -191,11 +191,19 @@ private:
             osmium::builder::RelationBuilder relation_builder(m_buffer);
             osmium::Relation& relation = static_cast<osmium::Relation&>(relation_builder.object());
             relation.set_id(id);
-            relation.set_changeset(changeset);
-            relation.set_uid(uid);
-            relation.set_version(version);
+            if (changeset) {
+                relation.set_changeset(changeset);
+            }
+            if (uid) {
+                relation.set_uid(uid);
+            }
+            if (version) {
+                relation.set_version(version);
+            }
             relation.set_visible(true);
-            relation.set_timestamp(timestamp);
+            if (timestamp) {
+                relation.set_timestamp(timestamp);
+            }
             relation_builder.set_user("");
             add_tags(&relation_builder, tags);
             add_relation_members(&relation_builder, members);
@@ -222,11 +230,19 @@ private:
             osmium::builder::WayBuilder way_builder(m_buffer);
             osmium::Way& way = static_cast<osmium::Way&>(way_builder.object());
             way.set_id(id);
-            way.set_changeset(changeset);
-            way.set_uid(uid);
-            way.set_version(version);
+            if (changeset) {
+                way.set_changeset(changeset);
+            }
+            if (uid) {
+                way.set_uid(uid);
+            }
+            if (version) {
+                way.set_version(version);
+            }
             way.set_visible(true);
-            way.set_timestamp(timestamp);
+            if (timestamp) {
+                way.set_timestamp(timestamp);
+            }
             way_builder.set_user("");
             add_tags(&way_builder, tags);
             add_node_refs(&way_builder, nodes);
@@ -248,17 +264,24 @@ private:
     void add_node(const osmium::object_id_type id, const osmium::Location& location,
             const char* version, const char* changeset, const char* uid, const char* timestamp,
             const std::string tags) {
-
         {
             osmium::builder::NodeBuilder builder(m_buffer);
             osmium::Node& node = static_cast<osmium::Node&>(builder.object());
             node.set_id(id);
-            node.set_version(version);
-            node.set_changeset(changeset);
-            node.set_uid(uid);
+            if (version) {
+                node.set_version(version);
+            }
+            if (changeset) {
+                node.set_changeset(changeset);
+            }
+            if (uid) {
+                node.set_uid(uid);
+            }
             // otherwise the resulting OSM file does not contain the visible=true attribute and some programs behave strange
             node.set_visible(true);
-            node.set_timestamp(timestamp);
+            if (timestamp) {
+                node.set_timestamp(timestamp);
+            }
             builder.set_user("");
             node.set_location(location);
             // Location handler must be called before add_tags(). That's a limitation by Osmium.
@@ -268,7 +291,33 @@ private:
             }
         }
         m_buffer.commit();
-}
+    }
+
+    /**
+     * \brief Add node without any metadata and tags to the buffer.
+     *
+     * \param id OSM object ID
+     * \param location location of the node
+     * \param version OSM object version
+     * \param changeset OSM object changeset attribute
+     * \param uid OSM object UID attribute
+     * \param timestamp OSM object timestamp
+     * \param tags tags to add
+     */
+    void add_node(const osmium::object_id_type id, const osmium::Location& location) {
+        {
+            osmium::builder::NodeBuilder builder(m_buffer);
+            osmium::Node& node = static_cast<osmium::Node&>(builder.object());
+            node.set_id(id);
+            // otherwise the resulting OSM file does not contain the visible=true attribute and some programs behave strange
+            node.set_visible(true);
+            builder.set_user("");
+            node.set_location(location);
+            // Location handler must be called before add_tags(). That's a limitation by Osmium.
+            m_location_handler.node(node); // add to location handler to store the location
+        }
+        m_buffer.commit();
+    }
 
     /**
      * \brief sort objects in a buffer and write them to a file
@@ -296,10 +345,15 @@ public:
             m_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
             m_location_handler(m_index) {
 
-        m_data_access.set_add_node_callback([this](const osmium::object_id_type id,
-            const osmium::Location& location, const char* version, const char* changeset,
-            const char* uid, const char* timestamp, const std::string tags) {
+        m_data_access.set_add_node_callback(
+            [this](const osmium::object_id_type id, const osmium::Location& location,
+                const char* version, const char* changeset, const char* uid,
+                const char* timestamp, const std::string tags) {
                 this->add_node(id, location, version, changeset, uid, timestamp, tags);
+                this->m_buffer.commit();
+            },
+            [this](const osmium::object_id_type id, const osmium::Location& location) {
+                this->add_node(id, location);
                 this->m_buffer.commit();
             }
         );

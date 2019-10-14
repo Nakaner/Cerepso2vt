@@ -38,6 +38,7 @@ namespace osm_vector_tile_impl {
 
     using node_callback_type = std::function<void(const osmium::object_id_type, osmium::Location&, const char*, const char*,
             const char*, const char*, const std::string)>;
+    using simple_node_callback_type = std::function<void(const osmium::object_id_type, osmium::Location&)>;
     using way_callback_type = std::function<void(const osmium::object_id_type, const std::vector<postgres_drivers::MemberIdPos>, const char*, const char*,
             const char*, const char*, const std::string)>;
     using relation_callback_type = std::function<void(const osmium::object_id_type,

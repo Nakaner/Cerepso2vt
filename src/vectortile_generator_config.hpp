@@ -77,6 +77,11 @@ struct VectortileGeneratorConfig {
      */
     bool m_untagged_nodes_geom = false;
 
+    /**
+     * Cerepso input: Flatnodes file path (empty if untagged_nodes table should be used instead).
+     */
+    std::string m_flatnodes_path = "";
+
     VectortileGeneratorConfig() :
         m_x(),
         m_y(),

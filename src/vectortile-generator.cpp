@@ -16,6 +16,7 @@
 #include "vectortile_generator_config.hpp"
 #include "vector_tile.hpp"
 #include "osm_data_table.hpp"
+#include "input/cerepso/nodes_provider_factory.hpp"
 
 /**
  * \mainpage
@@ -98,6 +99,7 @@ void print_usage(char* argv[]) {
     "                                the bounding box of the tile and referenced\n" \
     "                                by a relation\n" \
     "  -f, --force-overwrite         overwrite output file if it exists\n" \
+    "  -F PATH, --flatnodes=PATH     path to flatnodes file if it should be used to retrieve untagged nodes\n" \
     "  --metadata=OPTARG             OSM output only: import specified metadata fields. Permitted values are \"none\", \"all\" and\n" \
     "                                one or many of the following values concatenated by \"+\": version,\n" \
     "                                timestamp, user, uid, changeset.\n" \
@@ -115,6 +117,7 @@ int main(int argc, char* argv[]) {
             {"recurse-ways",  no_argument, 0, 'w'},
             {"recurse-nodes",  no_argument, 0, 'n'},
             {"force-overwrite",  no_argument, 0, 'f'},
+            {"flatnodes", required_argument, 0, 'F'},
             {"untagged-nodes-geom",  no_argument, 0, 200},
             {"metadata",  required_argument, 0, 201},
             {"help",  no_argument, 0, 'h'},
@@ -123,7 +126,7 @@ int main(int argc, char* argv[]) {
 
     VectortileGeneratorConfig config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:rwnhfvj:O", long_options, 0);
+        int c = getopt_long(argc, argv, "d:F:rwnhfvj:O", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -131,6 +134,9 @@ int main(int argc, char* argv[]) {
         switch (c) {
             case 'd':
                 config.m_postgres_config.m_database_name = optarg;
+                break;
+            case 'F':
+                config.m_flatnodes_path = optarg;
                 break;
             case 'j':
                 config.m_jobs_database = optarg;
@@ -209,7 +215,13 @@ int main(int argc, char* argv[]) {
     OSMDataTable relation_relations_table ("relation_relations", config.m_postgres_config, relation_relations_columns);
 
     // initialize the implmenation used to produce the vector tile
-    CerepsoDataAccess data_access {config, untagged_nodes_table, nodes_table, ways_linear_table,
+    std::unique_ptr<input::cerepso::NodesProvider> nodes_provider;
+    if (config.m_flatnodes_path == "") {
+        nodes_provider = input::cerepso::NodesProviderFactory::db_provider(config, nodes_table, untagged_nodes_table);
+    } else {
+        nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, nodes_table);
+    }
+    CerepsoDataAccess data_access {config, std::move(nodes_provider), ways_linear_table,
         relations_table, node_ways_table, node_relations_table, way_relations_table, relation_relations_table};
     OSMVectorTileImpl<CerepsoDataAccess> vector_tile_impl {config, data_access};
 
