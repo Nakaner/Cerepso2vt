@@ -5,10 +5,11 @@
  *      Author: Michael Reichert <michael.reichert@geofabrik.de>
  */
 
-#include "cerepso_data_access.hpp"
+#include "data_access.hpp"
+
 #include <algorithm>
 
-CerepsoDataAccess::CerepsoDataAccess(VectortileGeneratorConfig& config,
+input::cerepso::DataAccess::DataAccess(VectortileGeneratorConfig& config,
         std::unique_ptr<input::cerepso::NodesProvider>&& nodes_provider,
         OSMDataTable& ways_table, OSMDataTable& relations_table,
         OSMDataTable& node_ways_table, OSMDataTable& node_relations_table,
@@ -24,7 +25,7 @@ CerepsoDataAccess::CerepsoDataAccess(VectortileGeneratorConfig& config,
     create_prepared_statements();
 }
 
-void CerepsoDataAccess::create_prepared_statements() {
+void input::cerepso::DataAccess::create_prepared_statements() {
     // ways
     std::string query = m_metadata_fields.select_str();
     query += " osm_id, tags";
@@ -65,28 +66,28 @@ void CerepsoDataAccess::create_prepared_statements() {
     m_relation_relations_table.create_prepared_statement("get_relation_members", query, 1);
 }
 
-void CerepsoDataAccess::set_bbox(const BoundingBox& bbox) {
+void input::cerepso::DataAccess::set_bbox(const BoundingBox& bbox) {
     m_nodes_provider->set_bbox(bbox);
     m_ways_table.set_bbox(bbox);
     m_relations_table.set_bbox(bbox);
 }
 
-void CerepsoDataAccess::set_add_node_callback(osm_vector_tile_impl::node_callback_type&& callback,
+void input::cerepso::DataAccess::set_add_node_callback(osm_vector_tile_impl::node_callback_type&& callback,
         osm_vector_tile_impl::simple_node_callback_type&& simple_callback) {
     m_add_node_callback = callback;
     m_nodes_provider->set_add_node_callback(callback);
     m_nodes_provider->set_add_simple_node_callback(simple_callback);
 }
 
-void CerepsoDataAccess::set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback) {
+void input::cerepso::DataAccess::set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback) {
     m_add_way_callback = callback;
 }
 
-void CerepsoDataAccess::set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback) {
+void input::cerepso::DataAccess::set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback) {
     m_add_relation_callback = callback;
 }
 
-void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmium::object_id_type id) {
+void input::cerepso::DataAccess::parse_relation_query_result(PGresult* result, const osmium::object_id_type id) {
     int id_field_offset = m_metadata_fields.count();
     int tags_field_offset = id_field_offset;
     if (id == 0) {
@@ -138,7 +139,7 @@ void CerepsoDataAccess::parse_relation_query_result(PGresult* result, const osmi
     }
 }
 
-void CerepsoDataAccess::get_missing_relations(const osm_vector_tile_impl::osm_id_set_type& missing_relations) {
+void input::cerepso::DataAccess::get_missing_relations(const osm_vector_tile_impl::osm_id_set_type& missing_relations) {
     char* param_values[1];
     char param[25];
     param_values[0] = param;
@@ -151,15 +152,15 @@ void CerepsoDataAccess::get_missing_relations(const osm_vector_tile_impl::osm_id
 //    m_buffer.commit();
 }
 
-void CerepsoDataAccess::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
+void input::cerepso::DataAccess::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
     m_nodes_provider->get_missing_nodes(missing_nodes);
 }
 
-void CerepsoDataAccess::get_nodes_inside() {
+void input::cerepso::DataAccess::get_nodes_inside() {
     m_nodes_provider->get_nodes_inside();
 }
 
-void CerepsoDataAccess::parse_way_query_result(PGresult* result, const osmium::object_id_type id) {
+void input::cerepso::DataAccess::parse_way_query_result(PGresult* result, const osmium::object_id_type id) {
     int id_field_offset = m_metadata_fields.count();
     int tags_field_offset = id_field_offset;
     if (id == 0) {
@@ -194,13 +195,13 @@ void CerepsoDataAccess::parse_way_query_result(PGresult* result, const osmium::o
     }
 }
 
-void CerepsoDataAccess::get_ways_inside() {
+void input::cerepso::DataAccess::get_ways_inside() {
     PGresult* result = m_ways_table.run_prepared_bbox_statement("get_ways");
     parse_way_query_result(result, 0);
     PQclear(result);
 }
 
-void CerepsoDataAccess::get_missing_ways(const osm_vector_tile_impl::osm_id_set_type& missing_ways) {
+void input::cerepso::DataAccess::get_missing_ways(const osm_vector_tile_impl::osm_id_set_type& missing_ways) {
     char* param_values[1];
     char param[25];
     param_values[0] = param;
@@ -212,7 +213,7 @@ void CerepsoDataAccess::get_missing_ways(const osm_vector_tile_impl::osm_id_set_
     }
 }
 
-void CerepsoDataAccess::get_relations_inside() {
+void input::cerepso::DataAccess::get_relations_inside() {
     PGresult* result = m_relations_table.run_prepared_bbox_statement("get_relations");
     parse_relation_query_result(result, 0);
     PQclear(result);

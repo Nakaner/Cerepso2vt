@@ -11,7 +11,7 @@
 #include <string>
 #include <memory>
 #include <postgres_drivers/columns.hpp>
-#include "cerepso_data_access.hpp"
+#include "input/cerepso/data_access.hpp"
 #include "osmvectortileimpl.hpp"
 #include "vectortile_generator_config.hpp"
 #include "vector_tile.hpp"
@@ -221,9 +221,9 @@ int main(int argc, char* argv[]) {
     } else {
         nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, nodes_table);
     }
-    CerepsoDataAccess data_access {config, std::move(nodes_provider), ways_linear_table,
+    input::cerepso::DataAccess data_access {config, std::move(nodes_provider), ways_linear_table,
         relations_table, node_ways_table, node_relations_table, way_relations_table, relation_relations_table};
-    OSMVectorTileImpl<CerepsoDataAccess> vector_tile_impl {config, data_access};
+    OSMVectorTileImpl<input::cerepso::DataAccess> vector_tile_impl {config, data_access};
 
     // initialize connection to jobs' database
     std::unique_ptr<JobsDatabase> jobs_db;
@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
         if (config.m_verbose) {
             std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
         }
-        VectorTile<OSMVectorTileImpl<CerepsoDataAccess>> vector_tile(config, vector_tile_impl, bbox, jobs_db.get());
+        VectorTile<OSMVectorTileImpl<input::cerepso::DataAccess>> vector_tile(config, vector_tile_impl, bbox, jobs_db.get());
         vector_tile.generate_vectortile();
     }
 }

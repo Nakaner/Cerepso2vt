@@ -98,5 +98,3 @@ std::string input::cerepso::MetadataFields::select_str() const {
     }
     return query;
 }
-
-
