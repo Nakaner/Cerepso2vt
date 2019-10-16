@@ -23,8 +23,8 @@ input::cerepso::dense_file_array_t input::cerepso::NodesFlatnodeProvider::load_i
 }
 
 input::cerepso::NodesFlatnodeProvider::NodesFlatnodeProvider(
-        VectortileGeneratorConfig& config, const char* nodes_table_name) :
-    NodesProvider(config, nodes_table_name),
+        VectortileGeneratorConfig& config, OSMDataTable&& nodes_table) :
+    NodesProvider(config, std::move(nodes_table)),
     m_storage_pos(load_index(config.m_flatnodes_path.c_str())),
     m_location_handler(m_storage_pos) {
 }

@@ -10,10 +10,10 @@
 #include <string>
 
 input::cerepso::NodesDBProvider::NodesDBProvider(VectortileGeneratorConfig& config,
-        const char* nodes_table_name, const char* untagged_nodes_table_name) :
-    NodesProvider(config, nodes_table_name),
+        OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table) :
+    NodesProvider(config, std::move(nodes_table)),
     m_config(config),
-    m_untagged_nodes_table(untagged_nodes_table_name, config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::POINT}) {
+    m_untagged_nodes_table(std::move(untagged_nodes_table)) {
     create_prepared_statements_untagged();
 }
 
@@ -24,16 +24,17 @@ void input::cerepso::NodesDBProvider::create_prepared_statements_untagged() {
     std::string query = m_metadata.select_str();
     // retrieval of untagged nodes by location is not possible without a geometry column
     if (m_config.m_untagged_nodes_geom) {
+        std::string geom_column_name = m_nodes_table.get_column_name_by_type(postgres_drivers::ColumnType::POINT);
         query = m_metadata.select_str();
-        query += " osm_id, ST_X(geom), ST_Y(geom)";
-        query.append(" FROM %1% WHERE ST_INTERSECTS(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))");
-        query = (boost::format(query) % m_untagged_nodes_table.get_name()).str();
+        query += " osm_id, ST_X(%1%), ST_Y(%1%)";
+        query.append(" FROM %2% WHERE ST_INTERSECTS(%1%, ST_MakeEnvelope($1, $2, $3, $4, 4326))");
+        query = (boost::format(query) % geom_column_name % m_untagged_nodes_table.get_name()).str();
         m_nodes_table.create_prepared_statement("get_nodes_without_tags", query, 1);
 
         query = m_metadata.select_str();
-        query += " ST_X(geom), ST_Y(geom)";
-        query.append(" FROM %1% WHERE osm_id = $1");
-        query = (boost::format(query) % m_untagged_nodes_table.get_name()).str();
+        query += " ST_X(%1%), ST_Y(%1%)";
+        query.append(" FROM %2% WHERE osm_id = $1");
+        query = (boost::format(query) % geom_column_name % m_untagged_nodes_table.get_name()).str();
     } else {
         query = m_metadata.select_str();
         query += " x, y";

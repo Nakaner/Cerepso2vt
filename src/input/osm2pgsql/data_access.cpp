@@ -12,16 +12,19 @@
 
 postgres_drivers::Column input::osm2pgsql::DataAccess::osm_id {"osm_id", postgres_drivers::ColumnType::BIGINT, postgres_drivers::ColumnClass::OSM_ID};
 postgres_drivers::Column input::osm2pgsql::DataAccess::tags {"tags", postgres_drivers::ColumnType::HSTORE, postgres_drivers::ColumnClass::TAGS_OTHER};
+postgres_drivers::Column input::osm2pgsql::DataAccess::point_column {"way", postgres_drivers::ColumnType::POINT, postgres_drivers::ColumnClass::GEOMETRY};
+postgres_drivers::Column input::osm2pgsql::DataAccess::way_column {"way", postgres_drivers::ColumnType::GEOMETRY, postgres_drivers::ColumnClass::GEOMETRY};
 postgres_drivers::Column input::osm2pgsql::DataAccess::nodes {"nodes", postgres_drivers::ColumnType::BIGINT_ARRAY, postgres_drivers::ColumnClass::WAY_NODES};
 postgres_drivers::Column input::osm2pgsql::DataAccess::members {"members", postgres_drivers::ColumnType::TEXT_ARRAY, postgres_drivers::ColumnClass::RELATION_TYPE_ID_ROLE};
 
 input::osm2pgsql::DataAccess::DataAccess(VectortileGeneratorConfig& config) :
-    m_nodes_provider(input::cerepso::NodesProviderFactory::flatnodes_provider(config, "planet_osm_point")),
-    m_line_table("planet_osm_line", config.m_postgres_config, postgres_drivers::Columns({osm_id, tags}, postgres_drivers::TableType::OTHER)),
-    m_ways_table("planet_osm_ways", config.m_postgres_config, postgres_drivers::Columns({osm_id, tags}, postgres_drivers::TableType::OTHER)),
-    m_polygon_table("planet_osm_polygon", config.m_postgres_config, postgres_drivers::Columns({nodes}, postgres_drivers::TableType::OTHER)),
+    m_nodes_provider(),
+    m_line_table("planet_osm_line", config.m_postgres_config, postgres_drivers::Columns({osm_id, tags, way_column}, postgres_drivers::TableType::OTHER)),
+    m_ways_table("planet_osm_ways", config.m_postgres_config, postgres_drivers::Columns({nodes}, postgres_drivers::TableType::OTHER)),
+    m_polygon_table("planet_osm_polygon", config.m_postgres_config, postgres_drivers::Columns({osm_id, tags, way_column}, postgres_drivers::TableType::OTHER)),
     m_rels_table("planet_osm_rels", config.m_postgres_config, postgres_drivers::Columns({members}, postgres_drivers::TableType::OTHER)) {
-    postgres_drivers::Columns rels_columns {{members}, postgres_drivers::TableType::OTHER};
+    OSMDataTable point_table {"planet_osm_point", config.m_postgres_config, postgres_drivers::Columns{{osm_id, tags, point_column}, postgres_drivers::TableType::OTHER}};
+    m_nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, std::move(point_table));
     create_prepared_statements();
 }
 

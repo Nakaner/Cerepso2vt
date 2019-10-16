@@ -32,7 +32,7 @@ namespace input {
 
             VectortileGeneratorConfig& m_config;
 
-            /// `untagged_nodes` table
+            /// providing `nodes` and `untagged_nodes` table
             std::unique_ptr<input::cerepso::NodesProvider> m_nodes_provider;
             /// `ways` table
             OSMDataTable m_ways_table;

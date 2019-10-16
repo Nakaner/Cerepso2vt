@@ -48,7 +48,11 @@ namespace input {
             void create_prepared_statements();
 
         public:
-            NodesProvider(VectortileGeneratorConfig& config, const char* nodes_table_name);
+            NodesProvider() = delete;
+
+            NodesProvider(NodesProvider&) = delete;
+
+            NodesProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table);
 
             virtual ~NodesProvider();
 

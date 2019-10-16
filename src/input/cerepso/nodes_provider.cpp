@@ -9,9 +9,9 @@
 #include <string>
 
 
-input::cerepso::NodesProvider::NodesProvider(VectortileGeneratorConfig& config, const char* nodes_table_name) :
+input::cerepso::NodesProvider::NodesProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table) :
     m_config(config),
-    m_nodes_table(nodes_table_name, config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::POINT}),
+    m_nodes_table(std::move(nodes_table)),
     m_metadata(config) {
     create_prepared_statements();
 }
@@ -32,15 +32,16 @@ void input::cerepso::NodesProvider::set_bbox(const BoundingBox& bbox) {
 }
 
 void input::cerepso::NodesProvider::create_prepared_statements() {
+    std::string geom_column_name = m_nodes_table.get_column_name_by_type(postgres_drivers::ColumnType::POINT);
     std::string query = m_metadata.select_str();
-    query += " osm_id, tags, ST_X(geom), ST_Y(geom) FROM %1% WHERE ST_INTERSECTS(geom, ST_MakeEnvelope($1, $2, $3, $4, 4326))";
-    query = (boost::format(query) % m_nodes_table.get_name()).str();
+    query += " osm_id, tags, ST_X(%1%), ST_Y(%1%) FROM %2% WHERE ST_INTERSECTS(%1%, ST_MakeEnvelope($1, $2, $3, $4, 4326))";
+    query = (boost::format(query) % geom_column_name % m_nodes_table.get_name()).str();
     m_nodes_table.create_prepared_statement("get_nodes_with_tags", query, 4);
 
     query = m_metadata.select_str();
-    query += " tags, ST_X(geom), ST_Y(geom)";
-    query.append(" FROM %1% WHERE osm_id = $1");
-    query = (boost::format(query) % m_nodes_table.get_name()).str();
+    query += " tags, ST_X(%1%), ST_Y(%1%)";
+    query.append(" FROM %2% WHERE osm_id = $1");
+    query = (boost::format(query) % geom_column_name % m_nodes_table.get_name()).str();
     m_nodes_table.create_prepared_statement("get_single_node_with_tags", query, 1);
 }
 

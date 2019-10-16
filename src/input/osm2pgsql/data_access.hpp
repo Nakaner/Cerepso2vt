@@ -20,6 +20,8 @@ namespace input {
 
             static postgres_drivers::Column osm_id;
             static postgres_drivers::Column tags;
+            static postgres_drivers::Column point_column;
+            static postgres_drivers::Column way_column;
             static postgres_drivers::Column nodes;
             static postgres_drivers::Column members;
 

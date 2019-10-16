@@ -28,7 +28,9 @@ namespace input {
         public:
             NodesDBProvider() = delete;
 
-            NodesDBProvider(VectortileGeneratorConfig& config, const char* nodes_table_name, const char* untagged_nodes_table_name);
+            NodesDBProvider(NodesDBProvider&) = delete;
+
+            NodesDBProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table);
 
             ~NodesDBProvider();
 

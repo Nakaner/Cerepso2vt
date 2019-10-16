@@ -19,10 +19,12 @@ input::cerepso::DataAccess::DataAccess(VectortileGeneratorConfig& config) :
     m_relation_relations_table("relation_relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_RELATIONS)),
     m_metadata_fields(config) {
     // initialize the implementaion used to produce the vector tile
+    OSMDataTable nodes_table {"planet_osm_point", config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::POINT}};
     if (config.m_flatnodes_path == "") {
-        m_nodes_provider = input::cerepso::NodesProviderFactory::db_provider(config, "planet_osm_point", "untagged_nodes");
+        OSMDataTable untagged_nodes_table {"untagged_nodes", config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::UNTAGGED_POINT}};
+        m_nodes_provider = input::cerepso::NodesProviderFactory::db_provider(config, std::move(nodes_table), std::move(untagged_nodes_table));
     } else {
-        m_nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, "planet_osm_point");
+        m_nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, std::move(nodes_table));
     }
     create_prepared_statements();
 }
