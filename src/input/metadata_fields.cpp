@@ -7,7 +7,7 @@
 
 #include "metadata_fields.hpp"
 
-input::cerepso::MetadataFields::MetadataFields(VectortileGeneratorConfig& config) :
+input::MetadataFields::MetadataFields(VectortileGeneratorConfig& config) :
     m_metadata_field_count(0),
     m_config(config) {
     if (config.m_postgres_config.metadata.user()) {
@@ -32,54 +32,54 @@ input::cerepso::MetadataFields::MetadataFields(VectortileGeneratorConfig& config
     }
 }
 
-int input::cerepso::MetadataFields::count() {
+int input::MetadataFields::count() {
     return m_metadata_field_count;
 }
 
-int input::cerepso::MetadataFields::user() {
+int input::MetadataFields::user() {
     return m_user_index;
 }
 
-int input::cerepso::MetadataFields::uid() {
+int input::MetadataFields::uid() {
     return m_uid_index;
 }
 
-int input::cerepso::MetadataFields::version() {
+int input::MetadataFields::version() {
     return m_version_index;
 }
 
-int input::cerepso::MetadataFields::last_modified() {
+int input::MetadataFields::last_modified() {
     return m_last_modified_index;
 }
 
-bool input::cerepso::MetadataFields::changeset() {
+bool input::MetadataFields::changeset() {
     return m_changeset_index;
 }
 
-bool input::cerepso::MetadataFields::has_user() {
+bool input::MetadataFields::has_user() {
     return m_user_index != unavailable;
 }
 
-bool input::cerepso::MetadataFields::has_uid() {
+bool input::MetadataFields::has_uid() {
     return m_uid_index != unavailable;
 }
 
-bool input::cerepso::MetadataFields::has_version() {
+bool input::MetadataFields::has_version() {
     return m_version_index != unavailable;
 }
 
-bool input::cerepso::MetadataFields::has_last_modified() {
+bool input::MetadataFields::has_last_modified() {
     return m_last_modified_index != unavailable;
 }
 
-bool input::cerepso::MetadataFields::has_changeset() {
+bool input::MetadataFields::has_changeset() {
     return m_changeset_index != unavailable;
 }
 
 /**
  * Get the beginning of an SQL SELECT string containing all requested metadata fields.
  */
-std::string input::cerepso::MetadataFields::select_str() const {
+std::string input::MetadataFields::select_str() const {
     std::string query = "SELECT ";
     if (m_config.m_postgres_config.metadata.user()) {
         query.append("osm_user, ");

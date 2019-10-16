@@ -7,7 +7,7 @@
 
 #include "nodes_flatnode_provider.hpp"
 
-input::cerepso::dense_file_array_t input::cerepso::NodesFlatnodeProvider::load_index(const char* path) {
+input::dense_file_array_t input::NodesFlatnodeProvider::load_index(const char* path) {
     if (!path || *path == '\0') {
         throw std::runtime_error{"No flatnodes path provided."};
     }
@@ -22,24 +22,24 @@ input::cerepso::dense_file_array_t input::cerepso::NodesFlatnodeProvider::load_i
     return dense_file_array_t{fd};
 }
 
-input::cerepso::NodesFlatnodeProvider::NodesFlatnodeProvider(
+input::NodesFlatnodeProvider::NodesFlatnodeProvider(
         VectortileGeneratorConfig& config, OSMDataTable&& nodes_table) :
     NodesProvider(config, std::move(nodes_table)),
     m_storage_pos(load_index(config.m_flatnodes_path.c_str())),
     m_location_handler(m_storage_pos) {
 }
 
-input::cerepso::NodesFlatnodeProvider::~NodesFlatnodeProvider() {
+input::NodesFlatnodeProvider::~NodesFlatnodeProvider() {
 }
 
-void input::cerepso::NodesFlatnodeProvider::get_nodes_inside() {
+void input::NodesFlatnodeProvider::get_nodes_inside() {
     NodesProvider::get_nodes_inside();
     if (m_config.m_orphaned_nodes) { // If requested by the user, query untagged nodes table, too.
         throw std::runtime_error{"Cannot query untagged nodes in the flatnodes file by bounding box."};
     }
 }
 
-void input::cerepso::NodesFlatnodeProvider::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
+void input::NodesFlatnodeProvider::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
     char* param_values[1];
     char param[25];
     param_values[0] = param;

@@ -9,29 +9,29 @@
 #include <string>
 
 
-input::cerepso::NodesProvider::NodesProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table) :
+input::NodesProvider::NodesProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table) :
     m_config(config),
     m_nodes_table(std::move(nodes_table)),
     m_metadata(config) {
     create_prepared_statements();
 }
 
-input::cerepso::NodesProvider::~NodesProvider() {
+input::NodesProvider::~NodesProvider() {
 }
 
-void input::cerepso::NodesProvider::set_add_node_callback(osm_vector_tile_impl::node_callback_type& callback) {
+void input::NodesProvider::set_add_node_callback(osm_vector_tile_impl::node_callback_type& callback) {
     m_add_node_callback = callback;
 }
 
-void input::cerepso::NodesProvider::set_add_simple_node_callback(osm_vector_tile_impl::simple_node_callback_type& callback) {
+void input::NodesProvider::set_add_simple_node_callback(osm_vector_tile_impl::simple_node_callback_type& callback) {
     m_add_simple_node_callback = callback;
 }
 
-void input::cerepso::NodesProvider::set_bbox(const BoundingBox& bbox) {
+void input::NodesProvider::set_bbox(const BoundingBox& bbox) {
     m_nodes_table.set_bbox(bbox);
 }
 
-void input::cerepso::NodesProvider::create_prepared_statements() {
+void input::NodesProvider::create_prepared_statements() {
     std::string geom_column_name = m_nodes_table.get_column_name_by_type(postgres_drivers::ColumnType::POINT);
     std::string query = m_metadata.select_str();
     query += " osm_id, tags, ST_X(%1%), ST_Y(%1%) FROM %2% WHERE ST_INTERSECTS(%1%, ST_MakeEnvelope($1, $2, $3, $4, 4326))";
@@ -45,13 +45,13 @@ void input::cerepso::NodesProvider::create_prepared_statements() {
     m_nodes_table.create_prepared_statement("get_single_node_with_tags", query, 1);
 }
 
-void input::cerepso::NodesProvider::get_nodes_inside() {
+void input::NodesProvider::get_nodes_inside() {
     PGresult* result = m_nodes_table.run_prepared_bbox_statement("get_nodes_with_tags");
     parse_node_query_result(result, true, 0);
     PQclear(result);
 }
 
-bool input::cerepso::NodesProvider::get_node_with_tags(const osmium::object_id_type id, char** param_values) {
+bool input::NodesProvider::get_node_with_tags(const osmium::object_id_type id, char** param_values) {
     PGresult* result = m_nodes_table.run_prepared_statement("get_single_node_with_tags", 1, param_values);
     if (PQntuples(result) > 0) {
         parse_node_query_result(result, true, id);
@@ -62,7 +62,7 @@ bool input::cerepso::NodesProvider::get_node_with_tags(const osmium::object_id_t
     return false;
 }
 
-/*static*/ void input::cerepso::NodesProvider::parse_node_query_result(PGresult* result, const bool with_tags,
+/*static*/ void input::NodesProvider::parse_node_query_result(PGresult* result, const bool with_tags,
         const osmium::object_id_type id) {
     int id_field_offset = m_metadata.count();
     int tags_field_offset = m_metadata.count();

@@ -9,7 +9,7 @@
 #include <libpq-fe.h>
 #include <string>
 
-input::cerepso::NodesDBProvider::NodesDBProvider(VectortileGeneratorConfig& config,
+input::NodesDBProvider::NodesDBProvider(VectortileGeneratorConfig& config,
         OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table) :
     NodesProvider(config, std::move(nodes_table)),
     m_config(config),
@@ -17,10 +17,10 @@ input::cerepso::NodesDBProvider::NodesDBProvider(VectortileGeneratorConfig& conf
     create_prepared_statements_untagged();
 }
 
-input::cerepso::NodesDBProvider::~NodesDBProvider() {
+input::NodesDBProvider::~NodesDBProvider() {
 }
 
-void input::cerepso::NodesDBProvider::create_prepared_statements_untagged() {
+void input::NodesDBProvider::create_prepared_statements_untagged() {
     std::string query = m_metadata.select_str();
     // retrieval of untagged nodes by location is not possible without a geometry column
     if (m_config.m_untagged_nodes_geom) {
@@ -44,12 +44,12 @@ void input::cerepso::NodesDBProvider::create_prepared_statements_untagged() {
     m_untagged_nodes_table.create_prepared_statement("get_single_node_without_tags", query, 1);
 }
 
-void input::cerepso::NodesDBProvider::set_bbox(const BoundingBox& bbox) {
+void input::NodesDBProvider::set_bbox(const BoundingBox& bbox) {
     NodesProvider::set_bbox(bbox);
     m_untagged_nodes_table.set_bbox(bbox);
 }
 
-void input::cerepso::NodesDBProvider::get_nodes_inside() {
+void input::NodesDBProvider::get_nodes_inside() {
     NodesProvider::get_nodes_inside();
     if (m_config.m_orphaned_nodes) { // If requested by the user, query untagged nodes table, too.
         PGresult* result = m_untagged_nodes_table.run_prepared_bbox_statement("get_nodes_without_tags");
@@ -58,7 +58,7 @@ void input::cerepso::NodesDBProvider::get_nodes_inside() {
     }
 }
 
-void input::cerepso::NodesDBProvider::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
+void input::NodesDBProvider::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
     char* param_values[1];
     char param[25];
     param_values[0] = param;

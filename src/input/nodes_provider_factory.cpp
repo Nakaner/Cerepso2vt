@@ -9,19 +9,17 @@
 #include "nodes_db_provider.hpp"
 #include "nodes_flatnode_provider.hpp"
 
-using namespace input::cerepso;
-
-/*static*/ std::unique_ptr<NodesProvider> NodesProviderFactory::db_provider(VectortileGeneratorConfig& config,
+/*static*/ std::unique_ptr<input::NodesProvider> input::NodesProviderFactory::db_provider(VectortileGeneratorConfig& config,
         OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table) {
-    return std::unique_ptr<NodesProvider>{static_cast<NodesProvider*>(new NodesDBProvider{config,
+    return std::unique_ptr<NodesProvider>{static_cast<NodesProvider*>(new input::NodesDBProvider{config,
         std::move(nodes_table), std::move(untagged_nodes_table)})};
 }
 /**
  * Create a location handler.
  */
-/*static*/ std::unique_ptr<NodesProvider> NodesProviderFactory::flatnodes_provider(VectortileGeneratorConfig& config,
+/*static*/ std::unique_ptr<input::NodesProvider> input::NodesProviderFactory::flatnodes_provider(VectortileGeneratorConfig& config,
         OSMDataTable&& nodes_table) {
-    return std::unique_ptr<NodesProvider>{static_cast<NodesProvider*>(new NodesFlatnodeProvider{
+    return std::unique_ptr<input::NodesProvider>{static_cast<input::NodesProvider*>(new input::NodesFlatnodeProvider{
         config, std::move(nodes_table)})};
 }
 

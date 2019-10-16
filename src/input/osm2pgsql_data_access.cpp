@@ -5,30 +5,30 @@
  *      Author: Michael Reichert <michael.reichert@geofabrik.de>
  */
 
-#include "data_access.hpp"
-#include "../cerepso/nodes_provider_factory.hpp"
+#include "osm2pgsql_data_access.hpp"
+#include "nodes_provider_factory.hpp"
 #include <array_parser.hpp>
 #include <osmium/osm/types_from_string.hpp>
 
-postgres_drivers::Column input::osm2pgsql::DataAccess::osm_id {"osm_id", postgres_drivers::ColumnType::BIGINT, postgres_drivers::ColumnClass::OSM_ID};
-postgres_drivers::Column input::osm2pgsql::DataAccess::tags {"tags", postgres_drivers::ColumnType::HSTORE, postgres_drivers::ColumnClass::TAGS_OTHER};
-postgres_drivers::Column input::osm2pgsql::DataAccess::point_column {"way", postgres_drivers::ColumnType::POINT, postgres_drivers::ColumnClass::GEOMETRY};
-postgres_drivers::Column input::osm2pgsql::DataAccess::way_column {"way", postgres_drivers::ColumnType::GEOMETRY, postgres_drivers::ColumnClass::GEOMETRY};
-postgres_drivers::Column input::osm2pgsql::DataAccess::nodes {"nodes", postgres_drivers::ColumnType::BIGINT_ARRAY, postgres_drivers::ColumnClass::WAY_NODES};
-postgres_drivers::Column input::osm2pgsql::DataAccess::members {"members", postgres_drivers::ColumnType::TEXT_ARRAY, postgres_drivers::ColumnClass::RELATION_TYPE_ID_ROLE};
+postgres_drivers::Column input::Osm2pgsqlDataAccess::osm_id {"osm_id", postgres_drivers::ColumnType::BIGINT, postgres_drivers::ColumnClass::OSM_ID};
+postgres_drivers::Column input::Osm2pgsqlDataAccess::tags {"tags", postgres_drivers::ColumnType::HSTORE, postgres_drivers::ColumnClass::TAGS_OTHER};
+postgres_drivers::Column input::Osm2pgsqlDataAccess::point_column {"way", postgres_drivers::ColumnType::POINT, postgres_drivers::ColumnClass::GEOMETRY};
+postgres_drivers::Column input::Osm2pgsqlDataAccess::way_column {"way", postgres_drivers::ColumnType::GEOMETRY, postgres_drivers::ColumnClass::GEOMETRY};
+postgres_drivers::Column input::Osm2pgsqlDataAccess::nodes {"nodes", postgres_drivers::ColumnType::BIGINT_ARRAY, postgres_drivers::ColumnClass::WAY_NODES};
+postgres_drivers::Column input::Osm2pgsqlDataAccess::members {"members", postgres_drivers::ColumnType::TEXT_ARRAY, postgres_drivers::ColumnClass::RELATION_TYPE_ID_ROLE};
 
-input::osm2pgsql::DataAccess::DataAccess(VectortileGeneratorConfig& config) :
+input::Osm2pgsqlDataAccess::Osm2pgsqlDataAccess(VectortileGeneratorConfig& config) :
     m_nodes_provider(),
     m_line_table("planet_osm_line", config.m_postgres_config, postgres_drivers::Columns({osm_id, tags, way_column}, postgres_drivers::TableType::OTHER)),
     m_ways_table("planet_osm_ways", config.m_postgres_config, postgres_drivers::Columns({nodes}, postgres_drivers::TableType::OTHER)),
     m_polygon_table("planet_osm_polygon", config.m_postgres_config, postgres_drivers::Columns({osm_id, tags, way_column}, postgres_drivers::TableType::OTHER)),
     m_rels_table("planet_osm_rels", config.m_postgres_config, postgres_drivers::Columns({members}, postgres_drivers::TableType::OTHER)) {
     OSMDataTable point_table {"planet_osm_point", config.m_postgres_config, postgres_drivers::Columns{{osm_id, tags, point_column}, postgres_drivers::TableType::OTHER}};
-    m_nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, std::move(point_table));
+    m_nodes_provider = input::NodesProviderFactory::flatnodes_provider(config, std::move(point_table));
     create_prepared_statements();
 }
 
-input::osm2pgsql::DataAccess::DataAccess(DataAccess&& other) :
+input::Osm2pgsqlDataAccess::Osm2pgsqlDataAccess(Osm2pgsqlDataAccess&& other) :
     m_nodes_provider(std::move(other.m_nodes_provider)),
     m_line_table(std::move(other.m_line_table)),
     m_ways_table(std::move(other.m_ways_table)),
@@ -36,7 +36,7 @@ input::osm2pgsql::DataAccess::DataAccess(DataAccess&& other) :
     m_rels_table(std::move(other.m_rels_table)) {
 }
 
-void input::osm2pgsql::DataAccess::create_prepared_statements() {
+void input::Osm2pgsqlDataAccess::create_prepared_statements() {
     // ways
     std::string query = "SELECT osm_id, tags FROM %1% WHERE ST_INTERSECTS(way, ST_MakeEnvelope($1, $2, $3, $4, 4326)) AND osm_id > 0";
     query = (boost::format(query) % m_line_table.get_name()).str();
@@ -73,36 +73,36 @@ void input::osm2pgsql::DataAccess::create_prepared_statements() {
     m_rels_table.create_prepared_statement("get_relation_members", query, 1);
 }
 
-void input::osm2pgsql::DataAccess::set_bbox(const BoundingBox& bbox) {
+void input::Osm2pgsqlDataAccess::set_bbox(const BoundingBox& bbox) {
     m_nodes_provider->set_bbox(bbox);
     m_line_table.set_bbox(bbox);
     m_polygon_table.set_bbox(bbox);
 }
 
-void input::osm2pgsql::DataAccess::set_add_node_callback(osm_vector_tile_impl::node_callback_type&& callback,
+void input::Osm2pgsqlDataAccess::set_add_node_callback(osm_vector_tile_impl::node_callback_type&& callback,
         osm_vector_tile_impl::simple_node_callback_type&& simple_callback) {
     m_add_node_callback = callback;
     m_nodes_provider->set_add_node_callback(callback);
     m_nodes_provider->set_add_simple_node_callback(simple_callback);
 }
 
-void input::osm2pgsql::DataAccess::set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback) {
+void input::Osm2pgsqlDataAccess::set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback) {
     m_add_way_callback = callback;
 }
 
-void input::osm2pgsql::DataAccess::set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback) {
+void input::Osm2pgsqlDataAccess::set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback) {
     m_add_relation_callback = callback;
 }
 
-void input::osm2pgsql::DataAccess::get_nodes_inside() {
+void input::Osm2pgsqlDataAccess::get_nodes_inside() {
     m_nodes_provider->get_nodes_inside();
 }
 
-void input::osm2pgsql::DataAccess::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
+void input::Osm2pgsqlDataAccess::get_missing_nodes(const osm_vector_tile_impl::osm_id_set_type& missing_nodes) {
     m_nodes_provider->get_missing_nodes(missing_nodes);
 }
 
-void input::osm2pgsql::DataAccess::parse_way_query_result(PGresult* result, osmium::object_id_type id) {
+void input::Osm2pgsqlDataAccess::parse_way_query_result(PGresult* result, osmium::object_id_type id) {
     int tuple_count = PQntuples(result);
     for (int i = 0; i < tuple_count; i++) { // for each returned row
         std::string tags_hstore;
@@ -143,18 +143,18 @@ void input::osm2pgsql::DataAccess::parse_way_query_result(PGresult* result, osmi
     }
 }
 
-void input::osm2pgsql::DataAccess::get_ways(OSMDataTable& table, const char* prepared_statement_name) {
+void input::Osm2pgsqlDataAccess::get_ways(OSMDataTable& table, const char* prepared_statement_name) {
     PGresult* result = table.run_prepared_bbox_statement(prepared_statement_name);
     parse_way_query_result(result, 0);
     PQclear(result);
 }
 
-void input::osm2pgsql::DataAccess::get_ways_inside() {
+void input::Osm2pgsqlDataAccess::get_ways_inside() {
     get_ways(m_line_table, "get_lines");
     get_ways(m_polygon_table, "get_way_polygons");
 }
 
-void input::osm2pgsql::DataAccess::get_missing_ways(const osm_vector_tile_impl::osm_id_set_type& missing_ways) {
+void input::Osm2pgsqlDataAccess::get_missing_ways(const osm_vector_tile_impl::osm_id_set_type& missing_ways) {
     char* param_values[1];
     char param[25];
     param_values[0] = param;
@@ -166,7 +166,7 @@ void input::osm2pgsql::DataAccess::get_missing_ways(const osm_vector_tile_impl::
     }
 }
 
-void input::osm2pgsql::DataAccess::parse_relation_query_result(PGresult* result, osmium::object_id_type id) {
+void input::Osm2pgsqlDataAccess::parse_relation_query_result(PGresult* result, osmium::object_id_type id) {
     int tuple_count = PQntuples(result);
     for (int i = 0; i < tuple_count; i++) { // for each returned row
         std::string tags_hstore;
@@ -215,12 +215,12 @@ void input::osm2pgsql::DataAccess::parse_relation_query_result(PGresult* result,
     }
 }
 
-void input::osm2pgsql::DataAccess::get_relations_inside() {
+void input::Osm2pgsqlDataAccess::get_relations_inside() {
     PGresult* result = m_polygon_table.run_prepared_bbox_statement("get_relation_polygons");
     PQclear(result);
 }
 
-void input::osm2pgsql::DataAccess::get_missing_relations(const osm_vector_tile_impl::osm_id_set_type& missing_relations) {
+void input::Osm2pgsqlDataAccess::get_missing_relations(const osm_vector_tile_impl::osm_id_set_type& missing_relations) {
     char* param_values[1];
     char param[25];
     param_values[0] = param;

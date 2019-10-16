@@ -11,8 +11,8 @@
 #include <string>
 #include <memory>
 #include <postgres_drivers/columns.hpp>
-#include "input/cerepso/data_access.hpp"
-#include "input/osm2pgsql/data_access.hpp"
+#include "input/cerepso_data_access.hpp"
+#include "input/osm2pgsql_data_access.hpp"
 #include "osmvectortileimpl.hpp"
 #include "vectortile_generator_config.hpp"
 #include "vector_tile.hpp"
@@ -218,13 +218,13 @@ int main(int argc, char* argv[]) {
     }
 
     if (config.m_input == "cerepso") {
-        input::cerepso::DataAccess data_access {config};
-        OSMVectorTileImpl<input::cerepso::DataAccess> vector_tile_impl {config, std::move(data_access)};
-        run<OSMVectorTileImpl<input::cerepso::DataAccess>>(config, bboxes, std::move(vector_tile_impl));
+        input::CerepsoDataAccess data_access {config};
+        OSMVectorTileImpl<input::CerepsoDataAccess> vector_tile_impl {config, std::move(data_access)};
+        run<OSMVectorTileImpl<input::CerepsoDataAccess>>(config, bboxes, std::move(vector_tile_impl));
     } else if (config.m_input == "osm2pgsql") {
-        input::osm2pgsql::DataAccess data_access {config};
-        OSMVectorTileImpl<input::osm2pgsql::DataAccess> vector_tile_impl {config, std::move(data_access)};
-        run<OSMVectorTileImpl<input::osm2pgsql::DataAccess>>(config, bboxes, std::move(vector_tile_impl));
+        input::Osm2pgsqlDataAccess data_access {config};
+        OSMVectorTileImpl<input::Osm2pgsqlDataAccess> vector_tile_impl {config, std::move(data_access)};
+        run<OSMVectorTileImpl<input::Osm2pgsqlDataAccess>>(config, bboxes, std::move(vector_tile_impl));
     } else {
         std::cerr << "ERROR: Unsupported input \"" << config.m_input << "\"\n";
         print_usage(argv);
