@@ -112,7 +112,8 @@ namespace postgres_drivers {
         RELATION_ID = 28,
         LONGITUDE = 29,
         LATITUDE = 30,
-        ROLE = 31
+        ROLE = 31,
+        RELATION_TYPE_ID_ROLE = 32
     };
 
     inline std::string column_type_to_str(const ColumnType c, const int epsg = 0) {
@@ -273,6 +274,14 @@ namespace postgres_drivers {
 
     public:
         Columns() = delete;
+
+        Columns(ColumnsVector columns, TableType type):
+                m_columns(columns),
+                m_tags_filter(false),
+                m_drop_filter(false),
+                m_nocolumn_filter(false),
+                m_type(type) {
+        }
 
         Columns(Config& config, TableType type):
                 m_columns(),

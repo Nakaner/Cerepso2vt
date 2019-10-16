@@ -161,6 +161,17 @@ namespace postgres_drivers {
     public:
         Table() = delete;
 
+        Table(const Table&) = delete;
+
+        Table(Table&& other) :
+            m_name(std::move(other.m_name)),
+            m_config(other.m_config),
+            m_copy_mode(other.m_copy_mode),
+            m_begin(other.m_begin),
+            m_columns(std::move(other.m_columns)),
+            m_database_connection(other.m_database_connection) {
+        }
+
         /**
          * constructor for production, establishes database connection, read-only access to the database
          */
