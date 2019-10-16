@@ -14,6 +14,8 @@ struct VectortileGeneratorConfig {
     /// database access related configuration
     postgres_drivers::Config m_postgres_config;
 
+    std::string m_input = "cerepso";
+
     /// output path
     std::string m_output_path = "-";
     /// default file suffix, determines file format in single-tile mode

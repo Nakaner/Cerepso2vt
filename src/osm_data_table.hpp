@@ -51,7 +51,7 @@ private:
     void check_prepared_statement_execution(PGresult* result);
 
 public:
-    OSMDataTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns);
+    OSMDataTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns&& columns);
 
     /**
      * set/change the bounding box which is currently used

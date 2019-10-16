@@ -12,17 +12,17 @@
 using namespace input::cerepso;
 
 /*static*/ std::unique_ptr<NodesProvider> NodesProviderFactory::db_provider(VectortileGeneratorConfig& config,
-        OSMDataTable& nodes_table, OSMDataTable& untagged_nodes_table) {
+        const char* nodes_table_name, const char* untagged_nodes_table_name) {
     return std::unique_ptr<NodesProvider>{static_cast<NodesProvider*>(new NodesDBProvider{config,
-        nodes_table, untagged_nodes_table})};
+        nodes_table_name, untagged_nodes_table_name})};
 }
 /**
  * Create a location handler.
  */
 /*static*/ std::unique_ptr<NodesProvider> NodesProviderFactory::flatnodes_provider(VectortileGeneratorConfig& config,
-        OSMDataTable& nodes_table) {
+        const char* nodes_table_name) {
     return std::unique_ptr<NodesProvider>{static_cast<NodesProvider*>(new NodesFlatnodeProvider{
-        config, nodes_table})};
+        config, nodes_table_name})};
 }
 
 

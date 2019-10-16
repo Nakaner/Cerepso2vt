@@ -6,23 +6,37 @@
  */
 
 #include "data_access.hpp"
-
+#include "nodes_provider_factory.hpp"
 #include <algorithm>
 
-input::cerepso::DataAccess::DataAccess(VectortileGeneratorConfig& config,
-        std::unique_ptr<input::cerepso::NodesProvider>&& nodes_provider,
-        OSMDataTable& ways_table, OSMDataTable& relations_table,
-        OSMDataTable& node_ways_table, OSMDataTable& node_relations_table,
-        OSMDataTable& way_relations_table, OSMDataTable& relation_relations_table) :
-    m_nodes_provider(std::move(nodes_provider)),
-    m_ways_table(ways_table),
-    m_relations_table(relations_table),
-    m_node_ways_table(node_ways_table),
-    m_node_relations_table(node_relations_table),
-    m_way_relations_table(way_relations_table),
-    m_relation_relations_table(relation_relations_table),
+input::cerepso::DataAccess::DataAccess(VectortileGeneratorConfig& config) :
+    m_config(config),
+    m_ways_table("planet_osm_line", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::WAYS_LINEAR)),
+    m_relations_table("relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_OTHER)),
+    m_node_ways_table("node_ways", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::NODE_WAYS)),
+    m_node_relations_table("node_relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_NODES)),
+    m_way_relations_table("way_relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_WAYS)),
+    m_relation_relations_table("relation_relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_RELATIONS)),
     m_metadata_fields(config) {
+    // initialize the implementaion used to produce the vector tile
+    if (config.m_flatnodes_path == "") {
+        m_nodes_provider = input::cerepso::NodesProviderFactory::db_provider(config, "planet_osm_point", "untagged_nodes");
+    } else {
+        m_nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, "planet_osm_point");
+    }
     create_prepared_statements();
+}
+
+input::cerepso::DataAccess::DataAccess(DataAccess&& other) :
+    m_config(other.m_config),
+    m_nodes_provider(std::move(other.m_nodes_provider)),
+    m_ways_table(std::move(other.m_ways_table)),
+    m_relations_table(std::move(other.m_relations_table)),
+    m_node_ways_table(std::move(other.m_node_ways_table)),
+    m_node_relations_table(std::move(other.m_node_relations_table)),
+    m_way_relations_table(std::move(other.m_way_relations_table)),
+    m_relation_relations_table(std::move(other.m_relation_relations_table)),
+    m_metadata_fields(other.m_config) {
 }
 
 void input::cerepso::DataAccess::create_prepared_statements() {

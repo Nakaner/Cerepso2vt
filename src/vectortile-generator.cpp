@@ -12,11 +12,10 @@
 #include <memory>
 #include <postgres_drivers/columns.hpp>
 #include "input/cerepso/data_access.hpp"
+#include "input/osm2pgsql/data_access.hpp"
 #include "osmvectortileimpl.hpp"
 #include "vectortile_generator_config.hpp"
 #include "vector_tile.hpp"
-#include "osm_data_table.hpp"
-#include "input/cerepso/nodes_provider_factory.hpp"
 
 /**
  * \mainpage
@@ -86,6 +85,9 @@ void print_usage(char* argv[]) {
     "  -d NAME, --database-name=NAME name of the database where the OSM data is stored\n" \
     "  -j NAME, --jobs-database=NAME name of the database where to write processing jobs\n" \
     "                                This argument is mandatory if you want to write jobs.\n" \
+    "  -i NAME, --input=NAME         Use input driver called name.\n" \
+    "                                Available drivers: cerepso, osm2pgsql\n" \
+    "                                Default: cerepso\n" \
     "  -O, --orphaned-nodes          do a spatial query on the untagged nodes table\n" \
     "                                You really need a spatial index on that table, otherwise\n" \
     "                                you will do a sequential scan on that table! Using -O\n" \
@@ -109,10 +111,28 @@ void print_usage(char* argv[]) {
     exit(1);
 }
 
+template <typename TOutput>
+void run(VectortileGeneratorConfig config, std::vector<BoundingBox> bboxes, TOutput&& vector_tile_impl) {
+    // initialize connection to jobs' database
+    std::unique_ptr<JobsDatabase> jobs_db;
+    if (config.m_jobs_database != "") {
+        jobs_db = std::unique_ptr<JobsDatabase>(new JobsDatabase(config.m_jobs_database));
+    }
+
+    for (BoundingBox& bbox : bboxes) {
+        if (config.m_verbose) {
+            std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
+        }
+        VectorTile<TOutput> vector_tile(config, vector_tile_impl, bbox, jobs_db.get());
+        vector_tile.generate_vectortile();
+    }
+}
+
 int main(int argc, char* argv[]) {
     static struct option long_options[] = {
             {"database-name",  required_argument, 0, 'd'},
             {"jobs-database",  required_argument, 0, 'j'},
+            {"input",  required_argument, 0, 'i'},
             {"recurse-relations",  no_argument, 0, 'r'},
             {"recurse-ways",  no_argument, 0, 'w'},
             {"recurse-nodes",  no_argument, 0, 'n'},
@@ -126,7 +146,7 @@ int main(int argc, char* argv[]) {
 
     VectortileGeneratorConfig config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:F:rwnhfvj:O", long_options, 0);
+        int c = getopt_long(argc, argv, "d:F:i:rwnhfvj:O", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -137,6 +157,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 'F':
                 config.m_flatnodes_path = optarg;
+                break;
+            case 'i':
+                config.m_input = optarg;
                 break;
             case 'j':
                 config.m_jobs_database = optarg;
@@ -194,50 +217,16 @@ int main(int argc, char* argv[]) {
         print_usage(argv);
     }
 
-    // column definitions
-    postgres_drivers::Columns node_columns(config.m_postgres_config, postgres_drivers::TableType::POINT);
-    postgres_drivers::Columns untagged_nodes_columns(config.m_postgres_config, postgres_drivers::TableType::UNTAGGED_POINT);
-    postgres_drivers::Columns way_linear_columns(config.m_postgres_config, postgres_drivers::TableType::WAYS_LINEAR);
-    postgres_drivers::Columns node_ways_columns(config.m_postgres_config, postgres_drivers::TableType::NODE_WAYS);
-    postgres_drivers::Columns relation_other_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_OTHER);
-    postgres_drivers::Columns node_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_NODES);
-    postgres_drivers::Columns way_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_WAYS);
-    postgres_drivers::Columns relation_relations_columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_RELATIONS);
-
-    // intialize connection to database tables
-    OSMDataTable nodes_table ("planet_osm_point", config.m_postgres_config, node_columns);
-    OSMDataTable untagged_nodes_table ("untagged_nodes", config.m_postgres_config, untagged_nodes_columns);
-    OSMDataTable ways_linear_table ("planet_osm_line", config.m_postgres_config, way_linear_columns);
-    OSMDataTable node_ways_table ("node_ways", config.m_postgres_config, node_ways_columns);
-    OSMDataTable relations_table ("relations", config.m_postgres_config, relation_other_columns);
-    OSMDataTable node_relations_table ("node_relations", config.m_postgres_config, node_relations_columns);
-    OSMDataTable way_relations_table ("way_relations", config.m_postgres_config, way_relations_columns);
-    OSMDataTable relation_relations_table ("relation_relations", config.m_postgres_config, relation_relations_columns);
-
-    // initialize the implmenation used to produce the vector tile
-    std::unique_ptr<input::cerepso::NodesProvider> nodes_provider;
-    if (config.m_flatnodes_path == "") {
-        nodes_provider = input::cerepso::NodesProviderFactory::db_provider(config, nodes_table, untagged_nodes_table);
+    if (config.m_input == "cerepso") {
+        input::cerepso::DataAccess data_access {config};
+        OSMVectorTileImpl<input::cerepso::DataAccess> vector_tile_impl {config, std::move(data_access)};
+        run<OSMVectorTileImpl<input::cerepso::DataAccess>>(config, bboxes, std::move(vector_tile_impl));
+    } else if (config.m_input == "osm2pgsql") {
+        input::osm2pgsql::DataAccess data_access {config};
+        OSMVectorTileImpl<input::osm2pgsql::DataAccess> vector_tile_impl {config, std::move(data_access)};
+        run<OSMVectorTileImpl<input::osm2pgsql::DataAccess>>(config, bboxes, std::move(vector_tile_impl));
     } else {
-        nodes_provider = input::cerepso::NodesProviderFactory::flatnodes_provider(config, nodes_table);
-    }
-    input::cerepso::DataAccess data_access {config, std::move(nodes_provider), ways_linear_table,
-        relations_table, node_ways_table, node_relations_table, way_relations_table, relation_relations_table};
-    OSMVectorTileImpl<input::cerepso::DataAccess> vector_tile_impl {config, data_access};
-
-    // initialize connection to jobs' database
-    std::unique_ptr<JobsDatabase> jobs_db;
-    if (config.m_jobs_database != "") {
-        jobs_db = std::unique_ptr<JobsDatabase>(new JobsDatabase(config.m_jobs_database));
-    }
-
-    for (BoundingBox& bbox : bboxes) {
-        if (config.m_verbose) {
-            std::cout << "Creating tile " << bbox.m_zoom << '/' << bbox.m_x << '/' << bbox.m_y << '\n';
-        }
-        VectorTile<OSMVectorTileImpl<input::cerepso::DataAccess>> vector_tile(config, vector_tile_impl, bbox, jobs_db.get());
-        vector_tile.generate_vectortile();
+        std::cerr << "ERROR: Unsupported input \"" << config.m_input << "\"\n";
+        print_usage(argv);
     }
 }
-
-

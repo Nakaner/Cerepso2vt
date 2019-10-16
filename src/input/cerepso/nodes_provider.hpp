@@ -27,7 +27,7 @@ namespace input {
             VectortileGeneratorConfig& m_config;
 
             /// reference to `nodes` table
-            OSMDataTable& m_nodes_table;
+            OSMDataTable m_nodes_table;
 
             MetadataFields m_metadata;
 
@@ -48,7 +48,7 @@ namespace input {
             void create_prepared_statements();
 
         public:
-            NodesProvider(VectortileGeneratorConfig& config, OSMDataTable& nodes_table);
+            NodesProvider(VectortileGeneratorConfig& config, const char* nodes_table_name);
 
             virtual ~NodesProvider();
 

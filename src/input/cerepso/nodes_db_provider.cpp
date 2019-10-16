@@ -10,10 +10,10 @@
 #include <string>
 
 input::cerepso::NodesDBProvider::NodesDBProvider(VectortileGeneratorConfig& config,
-        OSMDataTable& nodes_table, OSMDataTable& untagged_nodes_table) :
-    NodesProvider(config, nodes_table),
+        const char* nodes_table_name, const char* untagged_nodes_table_name) :
+    NodesProvider(config, nodes_table_name),
     m_config(config),
-    m_untagged_nodes_table(untagged_nodes_table) {
+    m_untagged_nodes_table(untagged_nodes_table_name, config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::POINT}) {
     create_prepared_statements_untagged();
 }
 

@@ -9,9 +9,9 @@
 #include <string>
 
 
-input::cerepso::NodesProvider::NodesProvider(VectortileGeneratorConfig& config, OSMDataTable& nodes_table) :
+input::cerepso::NodesProvider::NodesProvider(VectortileGeneratorConfig& config, const char* nodes_table_name) :
     m_config(config),
-    m_nodes_table(nodes_table),
+    m_nodes_table(nodes_table_name, config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::POINT}),
     m_metadata(config) {
     create_prepared_statements();
 }

@@ -8,7 +8,7 @@
 #include <assert.h>
 #include "osm_data_table.hpp"
 
-OSMDataTable::OSMDataTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns& columns) :
+OSMDataTable::OSMDataTable(const char* table_name, postgres_drivers::Config& config, postgres_drivers::Columns&& columns) :
         postgres_drivers::Table(table_name, config, columns),
     m_min_lon(new char[25]),
     m_min_lat(new char[25]),

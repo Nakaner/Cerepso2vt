@@ -8,6 +8,9 @@
 #include "nodes_flatnode_provider.hpp"
 
 input::cerepso::dense_file_array_t input::cerepso::NodesFlatnodeProvider::load_index(const char* path) {
+    if (!path || *path == '\0') {
+        throw std::runtime_error{"No flatnodes path provided."};
+    }
     int fd = ::open(path, O_RDWR);
     if (fd == -1) {
         std::string err = "failed to open flatnodes file ";
@@ -20,8 +23,8 @@ input::cerepso::dense_file_array_t input::cerepso::NodesFlatnodeProvider::load_i
 }
 
 input::cerepso::NodesFlatnodeProvider::NodesFlatnodeProvider(
-        VectortileGeneratorConfig& config, OSMDataTable& nodes_table) :
-    NodesProvider(config, nodes_table),
+        VectortileGeneratorConfig& config, const char* nodes_table_name) :
+    NodesProvider(config, nodes_table_name),
     m_storage_pos(load_index(config.m_flatnodes_path.c_str())),
     m_location_handler(m_storage_pos) {
 }

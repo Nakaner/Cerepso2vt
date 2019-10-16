@@ -21,14 +21,14 @@ namespace input {
             /// reference to the program configuration
             VectortileGeneratorConfig& m_config;
 
-            OSMDataTable& m_untagged_nodes_table;
+            OSMDataTable m_untagged_nodes_table;
 
             void create_prepared_statements_untagged();
 
         public:
             NodesDBProvider() = delete;
 
-            NodesDBProvider(VectortileGeneratorConfig& config, OSMDataTable& nodes_table, OSMDataTable& untagged_nodes_table);
+            NodesDBProvider(VectortileGeneratorConfig& config, const char* nodes_table_name, const char* untagged_nodes_table_name);
 
             ~NodesDBProvider();
 

@@ -1,53 +1,38 @@
 /*
- * crepso_data_access.hpp
+ * data_access.hpp
  *
- *  Created on:  2019-08-19
+ *  Created on:  2019-10-14
  *      Author: Michael Reichert <michael.reichert@geofabrik.de>
  */
 
-#ifndef SRC_CEREPSO_DATA_ACCESS_HPP_
-#define SRC_CEREPSO_DATA_ACCESS_HPP_
+#ifndef SRC_INPUT_OSM2PGSQL_DATA_ACCESS_HPP_
+#define SRC_INPUT_OSM2PGSQL_DATA_ACCESS_HPP_
 
-#include <libpq-fe.h>
-#include <functional>
-#include <string>
-#include <osmium/memory/buffer.hpp>
-#include <osmium/osm/location.hpp>
-#include <osmium/osm/types.hpp>
-#include <postgres_drivers/table.hpp>
-#include "nodes_provider.hpp"
-#include "metadata_fields.hpp"
+#include "../cerepso/nodes_provider.hpp"
 #include "../../osm_data_table.hpp"
-#include "../../osm_vector_tile_impl_definitions.hpp"
-#include "../../vectortile_generator_config.hpp"
+#include "../cerepso/nodes_provider.hpp"
 
 namespace input {
 
-    namespace cerepso {
-        /**
-         * Retrieve nodes, ways and relations from database tables imported with Cerepso and call the
-         * callbacks of OSMVectorTileImpl to add the OSM objects to the output file.
-         */
+    namespace osm2pgsql {
+
         class DataAccess {
 
-            VectortileGeneratorConfig& m_config;
+            static postgres_drivers::Column osm_id;
+            static postgres_drivers::Column tags;
+            static postgres_drivers::Column nodes;
+            static postgres_drivers::Column members;
 
-            /// `untagged_nodes` table
+            /// reference to `untagged_nodes` table
             std::unique_ptr<input::cerepso::NodesProvider> m_nodes_provider;
-            /// `ways` table
+            /// reference to `planet_osm_line` table
+            OSMDataTable m_line_table;
+            /// reference to `planet_osm_ways` table
             OSMDataTable m_ways_table;
-            /// `relations` table
-            OSMDataTable m_relations_table;
-            /// `node_ways` table
-            OSMDataTable m_node_ways_table;
-            /// `node_relations` table
-            OSMDataTable m_node_relations_table;
-            /// way_relations` table
-            OSMDataTable m_way_relations_table;
-            /// `relation_relations` table
-            OSMDataTable m_relation_relations_table;
-
-            input::cerepso::MetadataFields m_metadata_fields;
+            /// reference to `planet_osm_polygon` table
+            OSMDataTable m_polygon_table;
+            /// reference to `planet_osm_rels` table
+            OSMDataTable m_rels_table;
 
             osm_vector_tile_impl::node_callback_type m_add_node_callback;
             osm_vector_tile_impl::way_callback_type m_add_way_callback;
@@ -83,6 +68,15 @@ namespace input {
              */
             void parse_relation_query_result(PGresult* result, osmium::object_id_type id);
 
+            /**
+             * Retrieve ways from planet_osm_line or planet_osm_polygon table (tags) and
+             * planet_osm_ways (nodes) table.
+             *
+             * \param table table (planet_osm_line or planet_osm_polygon) to query
+             * \param prepared_statement_name name of the prepared statement to use
+             */
+            void get_ways(OSMDataTable& table, const char* prepared_statement_name);
+
         public:
             DataAccess(VectortileGeneratorConfig& config);
 
@@ -96,13 +90,6 @@ namespace input {
             void set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback);
 
             void set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback);
-
-            /**
-             * \brief Get all missing relations
-             *
-             * \param missing_relations relations to fetch from the database
-             */
-            void get_missing_relations(const osm_vector_tile_impl::osm_id_set_type& missing_relations);
 
             /**
              * \brief Get all nodes in the tile
@@ -128,17 +115,23 @@ namespace input {
              *
              * \param missing_ways ways to fetch from the database
              */
-            void get_missing_ways(const osm_vector_tile_impl::osm_id_set_type& missing_ways);
+            void get_missing_ways(const osm_vector_tile_impl::osm_id_set_type& m_missing_ways);
 
             /**
              * \brief Get all relations inside the tile
              */
             void get_relations_inside();
 
+            /**
+             * \brief Get all missing relations
+             *
+             * \param missing_relations relations to fetch from the database
+             */
+            void get_missing_relations(const osm_vector_tile_impl::osm_id_set_type& missing_relations);
         };
+    }
+}
 
-    } // namespace cerepso
 
-} // namespace input
 
-#endif /* SRC_CEREPSO_DATA_ACCESS_HPP_ */
+#endif /* SRC_INPUT_OSM2PGSQL_DATA_ACCESS_HPP_ */

@@ -45,7 +45,7 @@ private:
     VectortileGeneratorConfig& m_config;
 
     /// provides access to database meeting the needs of this implementation
-    TDataAccess& m_data_access;
+    TDataAccess m_data_access;
 
     /// default buffer size of Osmium's buffer
     static const size_t BUFFER_SIZE = 10240;
@@ -339,9 +339,13 @@ private:
     }
 
 public:
-    OSMVectorTileImpl<TDataAccess>(VectortileGeneratorConfig& config, TDataAccess& data_access) :
+    OSMVectorTileImpl<TDataAccess>() = delete;
+
+    OSMVectorTileImpl<TDataAccess>(OSMVectorTileImpl<TDataAccess>&) = delete;
+
+    OSMVectorTileImpl<TDataAccess>(VectortileGeneratorConfig& config, TDataAccess&& data_access) :
             m_config(config),
-            m_data_access(data_access),
+            m_data_access(std::move(data_access)),
             m_buffer(BUFFER_SIZE, osmium::memory::Buffer::auto_grow::yes),
             m_location_handler(m_index) {
 
