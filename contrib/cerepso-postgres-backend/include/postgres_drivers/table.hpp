@@ -235,6 +235,22 @@ namespace postgres_drivers {
         }
 
         /**
+         * Return the first column which has a column of the request type.
+         */
+        std::string get_column_name_by_type(const ColumnType type) {
+            postgres_drivers::ColumnsIterator it = m_columns.begin();
+            for (; it != m_columns.end(); ++it) {
+                if (it->type() == type) {
+                    return it->name();
+                }
+            }
+            std::string msg = "Table ";
+            msg += m_name;
+            msg += " has no column of type Point.";
+            throw std::runtime_error{msg};
+        }
+
+        /**
          * \brief Send a line to the database (it will get it from STDIN) during copy mode.
          *
          * This method asserts that the database connection is in COPY mode when this method is called.
