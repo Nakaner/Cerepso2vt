@@ -2,11 +2,12 @@ Cerepso2vt
 ==========
 
 Cerepso2vt is a Osmium-based C++ program to create vector tiles in
-OpenStreetMap's common data formats – OSM XML and OSM PBF. Cerepso2vt
+OpenStreetMap's common raw data formats – OSM XML and OSM PBF. Cerepso2vt
 supports all formats Osmium can write and was designed to be flexible.
 It should be easy to add different export formats.
+
 Cerepso2vt's data source is a PostgreSQL database which was imported
-using Cerepso.
+using Cerepso or Osm2pgsql (with `--slim`).
 
 
 Dependencies
