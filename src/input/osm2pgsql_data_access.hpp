@@ -65,21 +65,22 @@ namespace input {
         std::vector<osm_vector_tile_impl::StringPair> tags_from_pg_string_array(std::string& tags_arr_str);
 
         /**
-         * \brief Parse the response of the database after querying ways
+         * \brief Get IDs of objects in a given database table in the bounding box
          *
-         * Does not clean up memory afterwards!
+         * \param table database table to query (usually line or polygon)
+         * \param prepared_statement_name name of the prepared statement to execute
          *
-         * \param result query result
+         * \returns vector of way IDs in the bounding box
          */
-        void parse_way_query_result(PGresult* result);
+        std::vector<osmium::object_id_type> get_ids_inside(OSMDataTable& table, const char* prepared_statement_name);
 
         /**
          * \brief Get nodes and tags of a way from the planet_osm_ways table and call the callback
          * to create the OSM ways in the output file.
          *
-         * \param id OSM way ID
+         * \param id_list list of OSM IDs to query separated by comma to be inserted into the SQL statement
          */
-        void way_nodes_and_tags(osmium::object_id_type id);
+        void query_and_flush_ways(char* id_list);
 
         /**
          * \brief Parse the response of the database after querying relations
@@ -91,12 +92,61 @@ namespace input {
         void parse_relation_query_result(PGresult* result);
 
         /**
+         * \brief Iterate over a container of OSM object IDs and call a callback function for each batch of IDs.
+         *
+         * This method joins the IDs to a comma separated list of IDs as template argument for a
+         * prepared SQL statement and calls the callback function with this list. Each list consists of a batch
+         * of up to 100 IDs.
+         *
+         * \param begin iterator pointing to the first element in the input container
+         * \param end iterator pointing to the first element after the range
+         * \param fields fields to query (comma separated list of field names, will be inserted
+         *        into the SQL query directly without escaping)
+         * \param callback callback to be called
+         *
+         * \tparam TIterator iterator of a container of osmium::object_id_type
+         */
+        template <typename TIterator>
+        void get_objects_from_db(TIterator begin, TIterator end, const char* fields,
+                const char* table_name, std::function<void(char*)> callback) {
+            constexpr unsigned long int batch_size = 100;
+            constexpr unsigned long int number_width = 25;
+            constexpr unsigned long int str_maxlen = number_width * batch_size + 1;
+            char sql[str_maxlen];
+            const char* sql_template = "SELECT %s FROM %s WHERE id IN (";
+            int printed = snprintf(sql, str_maxlen - 26, sql_template, fields, table_name);
+            char* sql_ptr = sql + printed;
+            size_t rel_count = 0;
+            for (auto it = begin; it != end; ++it) {
+                int printed_chars = 0;
+                if (rel_count > 0) {
+                    printed_chars = sprintf(sql_ptr, ",%ld", *it);
+                } else {
+                    printed_chars = sprintf(sql_ptr, "%ld", *it);
+                }
+                sql_ptr = sql_ptr + printed_chars;
+                ++rel_count;
+                if (rel_count == batch_size || str_maxlen - (sql_ptr - sql) - 3 < number_width) {
+                    sprintf(sql_ptr, ");");
+                    callback(sql);
+                    rel_count = 0;
+                    printed_chars = snprintf(sql, str_maxlen - 26, sql_template, fields, table_name);
+                    sql_ptr = sql + printed_chars;
+                }
+            }
+            if (rel_count > 0) {
+                sprintf(sql_ptr, ");");
+                callback(sql);
+            }
+        }
+
+        /**
          * \brief Get relation members and tags from the planet_osm_rels table and call the
          * callback to create the OSM relations in the output file.
          *
-         * \param id OSM relation ID
+         * \param id_list list of OSM relation IDs
          */
-        void relation_tags_and_members(const osmium::object_id_type id);
+        void query_and_flush_relations(char* id_list);
 
         /**
          * Retrieve ways from planet_osm_line or planet_osm_polygon table (tags) and
@@ -165,6 +215,8 @@ namespace input {
 
         /**
          * \brief Get all relations inside the tile
+         *
+         * \returns vector of found OSM relation IDs
          */
         void get_relations_inside();
 
