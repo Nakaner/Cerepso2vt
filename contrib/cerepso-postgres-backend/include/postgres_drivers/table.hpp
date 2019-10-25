@@ -246,7 +246,8 @@ namespace postgres_drivers {
             }
             std::string msg = "Table ";
             msg += m_name;
-            msg += " has no column of type Point.";
+            msg += " has no column of type ";
+            msg += static_cast<int>(type);
             throw std::runtime_error{msg};
         }
 
