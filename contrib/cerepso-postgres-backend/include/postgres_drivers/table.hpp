@@ -375,6 +375,34 @@ namespace postgres_drivers {
             check_and_free_result(result, PGRES_COMMAND_OK, query);
         }
 
+        /**
+         * \brief Execute an SQL query returning data and return the result.
+         *
+         * This method cleans up memory if an error occured. If things run fine, memory cleanup
+         * has to be done by the caller of this method.
+         *
+         * \param query SQL query
+         *
+         * \returns query result
+         */
+        PGresult* send_select_query(const char* query) {
+            assert (m_database_connection);
+            if (m_copy_mode) {
+                throw std::runtime_error((boost::format("%1% failed: You are in COPY mode.\n%2%\n") % query % PQerrorMessage(m_database_connection)).str());
+            }
+            PGresult* result = PQexec(m_database_connection, query);
+            std::string message;
+            if (!result) {
+                throw std::runtime_error((boost::format("%1% failed\n") % query).str());
+            }
+            if (PQresultStatus(result) != PGRES_COMMAND_OK && PQresultStatus(result) != PGRES_TUPLES_OK) {
+                message = PQerrorMessage(m_database_connection);
+                PQclear(result);
+                throw std::runtime_error((boost::format("%1% failed: %2%\n") % query % message).str());
+            }
+            return result;
+        }
+
         /*
          * \brief Send `COMMIT` to table and checks if this is currently allowed (i.e. currently not in `COPY` mode)
          *
