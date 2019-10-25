@@ -9,6 +9,7 @@
 #define SRC_CEREPSO_UNTAGGED_NODES_PROVIDER_HPP_
 
 #include <osmium/osm/metadata_options.hpp>
+#include "column_config_parser.hpp"
 #include "metadata_fields.hpp"
 #include "../bounding_box.hpp"
 #include "../osm_data_table.hpp"
@@ -24,12 +25,16 @@ namespace input {
     protected:
         VectortileGeneratorConfig& m_config;
 
+        ColumnConfigParser& m_column_config_parser;
+
         /// reference to `nodes` table
         OSMDataTable m_nodes_table;
 
         MetadataFields m_metadata;
 
         osm_vector_tile_impl::node_callback_type m_add_node_callback;
+
+        osm_vector_tile_impl::node_without_tags_callback_type m_add_node_without_tags_callback;
 
         osm_vector_tile_impl::simple_node_callback_type m_add_simple_node_callback;
 
@@ -50,11 +55,13 @@ namespace input {
 
         NodesProvider(NodesProvider&) = delete;
 
-        NodesProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table);
+        NodesProvider(VectortileGeneratorConfig& config, ColumnConfigParser& column_config_parser, OSMDataTable&& nodes_table);
 
         virtual ~NodesProvider();
 
         void set_add_node_callback(osm_vector_tile_impl::node_callback_type& callback);
+
+        void set_add_node_without_tags_callback(osm_vector_tile_impl::node_without_tags_callback_type& callback);
 
         void set_add_simple_node_callback(osm_vector_tile_impl::simple_node_callback_type& callback);
 

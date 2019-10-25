@@ -23,8 +23,9 @@ input::dense_file_array_t input::NodesFlatnodeProvider::load_index(const char* p
 }
 
 input::NodesFlatnodeProvider::NodesFlatnodeProvider(
-        VectortileGeneratorConfig& config, OSMDataTable&& nodes_table) :
-    NodesProvider(config, std::move(nodes_table)),
+        VectortileGeneratorConfig& config, ColumnConfigParser& column_config_parser,
+        OSMDataTable&& nodes_table) :
+    NodesProvider(config, column_config_parser, std::move(nodes_table)),
     m_storage_pos(load_index(config.m_flatnodes_path.c_str())),
     m_location_handler(m_storage_pos) {
 }

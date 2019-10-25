@@ -29,7 +29,8 @@ namespace input {
     public:
         NodesFlatnodeProvider() = delete;
 
-        NodesFlatnodeProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table);
+        NodesFlatnodeProvider(VectortileGeneratorConfig& config,
+                ColumnConfigParser& column_config_parser, OSMDataTable&& nodes_table);
 
         ~NodesFlatnodeProvider();
 

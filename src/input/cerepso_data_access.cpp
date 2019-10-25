@@ -9,27 +9,42 @@
 #include "nodes_provider_factory.hpp"
 #include <algorithm>
 
-input::CerepsoDataAccess::CerepsoDataAccess(VectortileGeneratorConfig& config) :
+OSMDataTable input::CerepsoDataAccess::build_table(const char* name,
+        VectortileGeneratorConfig& config, postgres_drivers::TableType type,
+        postgres_drivers::ColumnsVector* additional_columns = nullptr) {
+    postgres_drivers::Columns cols {config.m_postgres_config, type};
+    if (additional_columns) {
+        for (auto& c : *additional_columns) {
+            cols.push_back(c);
+        }
+    }
+    return OSMDataTable{name, config.m_postgres_config, std::move(cols)};
+}
+
+input::CerepsoDataAccess::CerepsoDataAccess(VectortileGeneratorConfig& config,
+        input::ColumnConfigParser& column_config_parser) :
+    m_column_config_parser(column_config_parser),
     m_config(config),
-    m_ways_table("planet_osm_line", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::WAYS_LINEAR)),
-    m_relations_table("relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_OTHER)),
-    m_node_ways_table("node_ways", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::NODE_WAYS)),
-    m_node_relations_table("node_relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_NODES)),
-    m_way_relations_table("way_relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_WAYS)),
-    m_relation_relations_table("relation_relations", config.m_postgres_config, postgres_drivers::Columns(config.m_postgres_config, postgres_drivers::TableType::RELATION_MEMBER_RELATIONS)),
+    m_ways_table(build_table("planet_osm_line", config, postgres_drivers::TableType::WAYS_LINEAR, &(column_config_parser.line_columns()))),
+    m_relations_table(build_table("relations", config, postgres_drivers::TableType::RELATION_OTHER, &(column_config_parser.line_columns()))),
+    m_node_ways_table(build_table("node_ways", config, postgres_drivers::TableType::NODE_WAYS)),
+    m_node_relations_table(build_table("node_relations", config, postgres_drivers::TableType::RELATION_MEMBER_NODES)),
+    m_way_relations_table(build_table("way_relations", config, postgres_drivers::TableType::RELATION_MEMBER_WAYS)),
+    m_relation_relations_table(build_table("relation_relations", config, postgres_drivers::TableType::RELATION_MEMBER_RELATIONS)),
     m_metadata_fields(config) {
     // initialize the implementaion used to produce the vector tile
-    OSMDataTable nodes_table {"planet_osm_point", config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::POINT}};
+    OSMDataTable nodes_table = build_table("planet_osm_point", config, postgres_drivers::TableType::POINT, &(column_config_parser.point_columns()));
     if (config.m_flatnodes_path == "") {
         OSMDataTable untagged_nodes_table {"untagged_nodes", config.m_postgres_config, {config.m_postgres_config, postgres_drivers::TableType::UNTAGGED_POINT}};
-        m_nodes_provider = input::NodesProviderFactory::db_provider(config, std::move(nodes_table), std::move(untagged_nodes_table));
+        m_nodes_provider = input::NodesProviderFactory::db_provider(config, column_config_parser, std::move(nodes_table), std::move(untagged_nodes_table));
     } else {
-        m_nodes_provider = input::NodesProviderFactory::flatnodes_provider(config, std::move(nodes_table));
+        m_nodes_provider = input::NodesProviderFactory::flatnodes_provider(config, column_config_parser, std::move(nodes_table));
     }
     create_prepared_statements();
 }
 
 input::CerepsoDataAccess::CerepsoDataAccess(CerepsoDataAccess&& other) :
+    m_column_config_parser(other.m_column_config_parser),
     m_config(other.m_config),
     m_nodes_provider(std::move(other.m_nodes_provider)),
     m_ways_table(std::move(other.m_ways_table)),
@@ -38,7 +53,9 @@ input::CerepsoDataAccess::CerepsoDataAccess(CerepsoDataAccess&& other) :
     m_node_relations_table(std::move(other.m_node_relations_table)),
     m_way_relations_table(std::move(other.m_way_relations_table)),
     m_relation_relations_table(std::move(other.m_relation_relations_table)),
-    m_metadata_fields(other.m_config) {
+    m_metadata_fields(other.m_config),
+    m_add_way_callback(other.m_add_way_callback),
+    m_add_relation_callback(other.m_add_relation_callback) {
 }
 
 void input::CerepsoDataAccess::create_prepared_statements() {
@@ -89,17 +106,20 @@ void input::CerepsoDataAccess::set_bbox(const BoundingBox& bbox) {
 }
 
 void input::CerepsoDataAccess::set_add_node_callback(osm_vector_tile_impl::node_callback_type&& callback,
+        osm_vector_tile_impl::node_without_tags_callback_type&& callback_without_tags,
         osm_vector_tile_impl::simple_node_callback_type&& simple_callback) {
-    m_add_node_callback = callback;
     m_nodes_provider->set_add_node_callback(callback);
+    m_nodes_provider->set_add_node_without_tags_callback(callback_without_tags);
     m_nodes_provider->set_add_simple_node_callback(simple_callback);
 }
 
-void input::CerepsoDataAccess::set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback) {
+void input::CerepsoDataAccess::set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback,
+        osm_vector_tile_impl::slim_way_callback_type&&) {
     m_add_way_callback = callback;
 }
 
-void input::CerepsoDataAccess::set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback) {
+void input::CerepsoDataAccess::set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback,
+        osm_vector_tile_impl::slim_relation_callback_type&&) {
     m_add_relation_callback = callback;
 }
 
@@ -109,7 +129,10 @@ void input::CerepsoDataAccess::parse_relation_query_result(PGresult* result, con
     if (id == 0) {
         ++tags_field_offset;
     }
+    int additional_values_offset = tags_field_offset + 1;
     int tuple_count = PQntuples(result);
+    postgres_drivers::ColumnsVector& columns = m_column_config_parser.polygon_columns();
+    std::vector<const char*> additional_values {columns.size(), nullptr};
     for (int i = 0; i < tuple_count; i++) { // for each returned row
         std::string tags_hstore = PQgetvalue(result, i, tags_field_offset);
         const osmium::object_id_type osm_id = (id == 0) ? strtoll(PQgetvalue(result, i, id_field_offset), nullptr, 10) : id;
@@ -117,6 +140,9 @@ void input::CerepsoDataAccess::parse_relation_query_result(PGresult* result, con
         const char* uid = m_metadata_fields.has_uid() ? PQgetvalue(result, i, m_metadata_fields.uid()) : nullptr;
         const char* timestamp = m_metadata_fields.has_last_modified() ? PQgetvalue(result, i, m_metadata_fields.last_modified()) : nullptr;
         const char* changeset = m_metadata_fields.has_changeset() ? PQgetvalue(result, i, m_metadata_fields.changeset()) : nullptr;
+        for (size_t j = 0; j < columns.size(); ++j) {
+            additional_values[j] = PQgetvalue(result, i, additional_values_offset + j);
+        }
         // get nodes of this relation
         char* param_values[1];
         char param[25];
@@ -151,7 +177,7 @@ void input::CerepsoDataAccess::parse_relation_query_result(PGresult* result, con
         }
         std::sort(members.begin(), members.end());
         m_add_relation_callback(osm_id, std::move(members), version, changeset, uid, timestamp,
-                std::move(tags_hstore));
+                std::move(tags_hstore), columns, additional_values);
     }
 }
 
@@ -182,7 +208,10 @@ void input::CerepsoDataAccess::parse_way_query_result(PGresult* result, const os
     if (id == 0) {
         ++tags_field_offset;
     }
+    int additional_values_offset = tags_field_offset + 1;
     int tuple_count = PQntuples(result);
+    postgres_drivers::ColumnsVector& columns = m_column_config_parser.polygon_columns();
+    std::vector<const char*> additional_values {columns.size(), nullptr};
     for (int i = 0; i < tuple_count; i++) { // for each returned row
         std::string tags_hstore = PQgetvalue(result, i, tags_field_offset);
         osmium::object_id_type way_id = id;
@@ -193,6 +222,9 @@ void input::CerepsoDataAccess::parse_way_query_result(PGresult* result, const os
         const char* uid = m_metadata_fields.has_uid() ? PQgetvalue(result, i, m_metadata_fields.uid()) : nullptr;
         const char* timestamp = m_metadata_fields.has_last_modified() ? PQgetvalue(result, i, m_metadata_fields.last_modified()) : nullptr;
         const char* changeset = m_metadata_fields.has_changeset() ? PQgetvalue(result, i, m_metadata_fields.changeset()) : nullptr;
+        for (size_t j = 0; j < columns.size(); ++j) {
+            additional_values[j] = PQgetvalue(result, i, additional_values_offset + j);
+        }
 
         // get nodes of this way
         char* param_values[1];
@@ -207,7 +239,8 @@ void input::CerepsoDataAccess::parse_way_query_result(PGresult* result, const os
         }
         std::sort(node_ids.begin(), node_ids.end());
         PQclear(result_member_nodes);
-        m_add_way_callback(way_id, std::move(node_ids), version, changeset, uid, timestamp, std::move(tags_hstore));
+        m_add_way_callback(way_id, std::move(node_ids), version, changeset, uid, timestamp,
+                std::move(tags_hstore), columns, additional_values);
     }
 }
 

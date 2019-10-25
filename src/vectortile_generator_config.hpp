@@ -16,6 +16,9 @@ struct VectortileGeneratorConfig {
 
     std::string m_input = "cerepso";
 
+    /// path to Osm2pgsql-like style file
+    std::string m_osm2pgsql_style = "";
+
     /// output path
     std::string m_output_path = "-";
     /// default file suffix, determines file format in single-tile mode

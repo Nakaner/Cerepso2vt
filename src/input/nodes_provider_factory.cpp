@@ -9,18 +9,20 @@
 #include "nodes_db_provider.hpp"
 #include "nodes_flatnode_provider.hpp"
 
-/*static*/ std::unique_ptr<input::NodesProvider> input::NodesProviderFactory::db_provider(VectortileGeneratorConfig& config,
+/*static*/ std::unique_ptr<input::NodesProvider> input::NodesProviderFactory::db_provider(
+        VectortileGeneratorConfig& config, ColumnConfigParser& column_config_parser,
         OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table) {
     return std::unique_ptr<NodesProvider>{static_cast<NodesProvider*>(new input::NodesDBProvider{config,
-        std::move(nodes_table), std::move(untagged_nodes_table)})};
+        column_config_parser, std::move(nodes_table), std::move(untagged_nodes_table)})};
 }
 /**
  * Create a location handler.
  */
-/*static*/ std::unique_ptr<input::NodesProvider> input::NodesProviderFactory::flatnodes_provider(VectortileGeneratorConfig& config,
+/*static*/ std::unique_ptr<input::NodesProvider> input::NodesProviderFactory::flatnodes_provider(
+        VectortileGeneratorConfig& config, ColumnConfigParser& column_config_parser,
         OSMDataTable&& nodes_table) {
     return std::unique_ptr<input::NodesProvider>{static_cast<input::NodesProvider*>(new input::NodesFlatnodeProvider{
-        config, std::move(nodes_table)})};
+        config, column_config_parser, std::move(nodes_table)})};
 }
 
 

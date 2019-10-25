@@ -27,6 +27,8 @@ namespace osm_vector_tile_impl {
         }
     };
 
+    using StringPair = std::pair<std::string, std::string>;
+
     enum metadata_fields : char {
         NONE      = 0x00,
         VERSION   = 0x01,
@@ -37,13 +39,25 @@ namespace osm_vector_tile_impl {
     };
 
     using node_callback_type = std::function<void(const osmium::object_id_type, osmium::Location&, const char*, const char*,
-            const char*, const char*, const std::string)>;
+            const char*, const char*, const std::string, const postgres_drivers::ColumnsVector&,
+            const std::vector<const char*>&)>;
+    using node_without_tags_callback_type = std::function<void(const osmium::object_id_type, osmium::Location&, const char*, const char*,
+            const char*, const char*)>;
     using simple_node_callback_type = std::function<void(const osmium::object_id_type, osmium::Location&)>;
-    using way_callback_type = std::function<void(const osmium::object_id_type, const std::vector<postgres_drivers::MemberIdPos>, const char*, const char*,
-            const char*, const char*, const std::string)>;
+    using way_callback_type = std::function<void(const osmium::object_id_type,
+            const std::vector<postgres_drivers::MemberIdPos>, const char*, const char*,
+            const char*, const char*, const std::string, const postgres_drivers::ColumnsVector&,
+            const std::vector<const char*>&)>;
+    using slim_way_callback_type = std::function<void(const osmium::object_id_type,
+            const std::vector<postgres_drivers::MemberIdPos>, const char*, const char*,
+            const char*, const char*, const std::vector<osm_vector_tile_impl::StringPair>&)>;
     using relation_callback_type = std::function<void(const osmium::object_id_type,
             const std::vector<MemberIdRoleTypePos>, const char*, const char*, const char*,
-            const char*, const std::string)>;
+            const char*, const std::string, const postgres_drivers::ColumnsVector&,
+            const std::vector<const char*>&)>;
+    using slim_relation_callback_type = std::function<void(const osmium::object_id_type,
+            const std::vector<MemberIdRoleTypePos>, const char*, const char*, const char*,
+            const char*, const std::vector<osm_vector_tile_impl::StringPair>&)>;
 }
 
 

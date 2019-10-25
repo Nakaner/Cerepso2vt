@@ -9,8 +9,10 @@
 #include <string>
 
 
-input::NodesProvider::NodesProvider(VectortileGeneratorConfig& config, OSMDataTable&& nodes_table) :
+input::NodesProvider::NodesProvider(VectortileGeneratorConfig& config,
+        ColumnConfigParser& column_config_parser, OSMDataTable&& nodes_table) :
     m_config(config),
+    m_column_config_parser(column_config_parser),
     m_nodes_table(std::move(nodes_table)),
     m_metadata(config) {
     create_prepared_statements();
@@ -23,6 +25,10 @@ void input::NodesProvider::set_add_node_callback(osm_vector_tile_impl::node_call
     m_add_node_callback = callback;
 }
 
+void input::NodesProvider::set_add_node_without_tags_callback(osm_vector_tile_impl::node_without_tags_callback_type& callback) {
+    m_add_node_without_tags_callback = callback;
+}
+
 void input::NodesProvider::set_add_simple_node_callback(osm_vector_tile_impl::simple_node_callback_type& callback) {
     m_add_simple_node_callback = callback;
 }
@@ -33,15 +39,16 @@ void input::NodesProvider::set_bbox(const BoundingBox& bbox) {
 
 void input::NodesProvider::create_prepared_statements() {
     std::string geom_column_name = m_nodes_table.get_column_name_by_type(postgres_drivers::ColumnType::POINT);
+    std::string columns = postgres_drivers::join_columns_to_str(m_column_config_parser.point_columns(), true);
     std::string query = m_metadata.select_str();
-    query += " osm_id, tags, ST_X(%1%), ST_Y(%1%) FROM %2% WHERE ST_INTERSECTS(%1%, ST_MakeEnvelope($1, $2, $3, $4, 4326))";
-    query = (boost::format(query) % geom_column_name % m_nodes_table.get_name()).str();
+    query += " osm_id, tags, ST_X(%1%), ST_Y(%1%) %2% FROM %3% WHERE ST_INTERSECTS(%1%, ST_MakeEnvelope($1, $2, $3, $4, 4326))";
+    query = (boost::format(query) % geom_column_name % columns % m_nodes_table.get_name()).str();
     m_nodes_table.create_prepared_statement("get_nodes_with_tags", query, 4);
 
     query = m_metadata.select_str();
-    query += " tags, ST_X(%1%), ST_Y(%1%)";
-    query.append(" FROM %2% WHERE osm_id = $1");
-    query = (boost::format(query) % geom_column_name % m_nodes_table.get_name()).str();
+    query += " tags, ST_X(%1%), ST_Y(%1%) %2%";
+    query.append(" FROM %3% WHERE osm_id = $1");
+    query = (boost::format(query) % geom_column_name % columns % m_nodes_table.get_name()).str();
     m_nodes_table.create_prepared_statement("get_single_node_with_tags", query, 1);
 }
 
@@ -70,7 +77,10 @@ bool input::NodesProvider::get_node_with_tags(const osmium::object_id_type id, c
         ++tags_field_offset;
     }
     int other_field_offset = with_tags ? tags_field_offset + 1 : tags_field_offset;
+    int additional_values_offset = other_field_offset + 2;
     int tuple_count = PQntuples(result);
+    postgres_drivers::ColumnsVector& point_columns = m_column_config_parser.point_columns();
+    std::vector<const char*> additional_values {point_columns.size(), nullptr};
     for (int i = 0; i < tuple_count; ++i) { // for each returned row
         double x, y;
         if (!with_tags && !m_config.m_untagged_nodes_geom) {
@@ -89,11 +99,15 @@ bool input::NodesProvider::get_node_with_tags(const osmium::object_id_type id, c
         const char* uid = m_metadata.has_uid() ? PQgetvalue(result, i, m_metadata.uid()) : nullptr;
         const char* timestamp = m_metadata.has_last_modified() ? PQgetvalue(result, i, m_metadata.last_modified()) : nullptr;
         const char* changeset = m_metadata.has_changeset() ? PQgetvalue(result, i, m_metadata.changeset()) : nullptr;
+        for (size_t j = 0; j < point_columns.size(); ++j) {
+            additional_values[j] = PQgetvalue(result, i, additional_values_offset + j);
+        }
         if (with_tags) {
             std::string tags_hstore = PQgetvalue(result, i, tags_field_offset);
-            m_add_node_callback(osm_id, location, version, changeset, uid, timestamp, std::move(tags_hstore));
+            m_add_node_callback(osm_id, location, version, changeset, uid, timestamp,
+                    std::move(tags_hstore), point_columns, additional_values);
         } else {
-            m_add_node_callback(osm_id, location, version, changeset, uid, timestamp, "");
+            m_add_node_without_tags_callback(osm_id, location, version, changeset, uid, timestamp);
         }
     }
 }

@@ -17,6 +17,7 @@
 #include <postgres_drivers/table.hpp>
 #include "nodes_provider.hpp"
 #include "metadata_fields.hpp"
+#include "column_config_parser.hpp"
 #include "../osm_data_table.hpp"
 #include "../osm_vector_tile_impl_definitions.hpp"
 #include "../vectortile_generator_config.hpp"
@@ -28,6 +29,8 @@ namespace input {
      * callbacks of OSMVectorTileImpl to add the OSM objects to the output file.
      */
     class CerepsoDataAccess {
+
+        input::ColumnConfigParser& m_column_config_parser;
 
         VectortileGeneratorConfig& m_config;
 
@@ -48,7 +51,6 @@ namespace input {
 
         input::MetadataFields m_metadata_fields;
 
-        osm_vector_tile_impl::node_callback_type m_add_node_callback;
         osm_vector_tile_impl::way_callback_type m_add_way_callback;
         osm_vector_tile_impl::relation_callback_type m_add_relation_callback;
 
@@ -82,19 +84,26 @@ namespace input {
          */
         void parse_relation_query_result(PGresult* result, osmium::object_id_type id);
 
+        static OSMDataTable build_table(const char* name, VectortileGeneratorConfig& config,
+                postgres_drivers::TableType type, postgres_drivers::ColumnsVector* additional_columns);
+
     public:
-        CerepsoDataAccess(VectortileGeneratorConfig& config);
+        CerepsoDataAccess(VectortileGeneratorConfig& config,
+                input::ColumnConfigParser& column_config_parser);
 
         CerepsoDataAccess(CerepsoDataAccess&& other);
 
         void set_bbox(const BoundingBox& bbox);
 
         void set_add_node_callback(osm_vector_tile_impl::node_callback_type&& callback,
+                osm_vector_tile_impl::node_without_tags_callback_type&& callback_without_tags,
                 osm_vector_tile_impl::simple_node_callback_type&& simple_callback);
 
-        void set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback);
+        void set_add_way_callback(osm_vector_tile_impl::way_callback_type&& callback,
+                osm_vector_tile_impl::slim_way_callback_type&&);
 
-        void set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback);
+        void set_add_relation_callback(osm_vector_tile_impl::relation_callback_type&& callback,
+                osm_vector_tile_impl::slim_relation_callback_type&&);
 
         /**
          * \brief Get all missing relations

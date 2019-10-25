@@ -12,6 +12,7 @@
 #include <memory>
 #include <postgres_drivers/columns.hpp>
 #include "input/cerepso_data_access.hpp"
+#include "input/column_config_parser.hpp"
 #include "input/osm2pgsql_data_access.hpp"
 #include "osmvectortileimpl.hpp"
 #include "vectortile_generator_config.hpp"
@@ -101,6 +102,7 @@ void print_usage(char* argv[]) {
     "                                the bounding box of the tile and referenced\n" \
     "                                by a relation\n" \
     "  -f, --force-overwrite         overwrite output file if it exists\n" \
+    "  -s PATH, --style=PATH         Path to Osm2pgsql-like style file\n" \
     "  -F PATH, --flatnodes=PATH     path to flatnodes file if it should be used to retrieve untagged nodes\n" \
     "  --metadata=OPTARG             OSM output only: import specified metadata fields. Permitted values are \"none\", \"all\" and\n" \
     "                                one or many of the following values concatenated by \"+\": version,\n" \
@@ -138,6 +140,7 @@ int main(int argc, char* argv[]) {
             {"recurse-nodes",  no_argument, 0, 'n'},
             {"force-overwrite",  no_argument, 0, 'f'},
             {"flatnodes", required_argument, 0, 'F'},
+            {"style", required_argument, 0, 's'},
             {"untagged-nodes-geom",  no_argument, 0, 200},
             {"metadata",  required_argument, 0, 201},
             {"help",  no_argument, 0, 'h'},
@@ -146,7 +149,7 @@ int main(int argc, char* argv[]) {
 
     VectortileGeneratorConfig config;
     while (true) {
-        int c = getopt_long(argc, argv, "d:F:i:rwnhfvj:O", long_options, 0);
+        int c = getopt_long(argc, argv, "d:F:s:i:rwnhfvj:O", long_options, 0);
         if (c == -1) {
             break;
         }
@@ -157,6 +160,9 @@ int main(int argc, char* argv[]) {
                 break;
             case 'F':
                 config.m_flatnodes_path = optarg;
+                break;
+            case 's':
+                config.m_osm2pgsql_style = optarg;
                 break;
             case 'i':
                 config.m_input = optarg;
@@ -217,12 +223,17 @@ int main(int argc, char* argv[]) {
         print_usage(argv);
     }
 
+    input::ColumnConfigParser column_parser {config};
+    if (config.m_osm2pgsql_style != "") {
+        column_parser.parse();
+    }
+
     if (config.m_input == "cerepso") {
-        input::CerepsoDataAccess data_access {config};
+        input::CerepsoDataAccess data_access {config, column_parser};
         OSMVectorTileImpl<input::CerepsoDataAccess> vector_tile_impl {config, std::move(data_access)};
         run<OSMVectorTileImpl<input::CerepsoDataAccess>>(config, bboxes, std::move(vector_tile_impl));
     } else if (config.m_input == "osm2pgsql") {
-        input::Osm2pgsqlDataAccess data_access {config};
+        input::Osm2pgsqlDataAccess data_access {config, column_parser};
         OSMVectorTileImpl<input::Osm2pgsqlDataAccess> vector_tile_impl {config, std::move(data_access)};
         run<OSMVectorTileImpl<input::Osm2pgsqlDataAccess>>(config, bboxes, std::move(vector_tile_impl));
     } else {

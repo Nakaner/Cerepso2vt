@@ -10,8 +10,9 @@
 #include <string>
 
 input::NodesDBProvider::NodesDBProvider(VectortileGeneratorConfig& config,
+        ColumnConfigParser& column_config_parser,
         OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table) :
-    NodesProvider(config, std::move(nodes_table)),
+    NodesProvider(config, column_config_parser, std::move(nodes_table)),
     m_config(config),
     m_untagged_nodes_table(std::move(untagged_nodes_table)) {
     create_prepared_statements_untagged();

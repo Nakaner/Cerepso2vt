@@ -72,13 +72,39 @@ private:
 
     /**
      * add a tags to an OSM object
+     *
+     * \param builder builder to use
+     * \param hstore_content PostgreSQL Hstore representation as string
+     * \param additional_columns keys which have their own database column
+     * \param additional_values values of keys which have their own database column in the same order
      */
-    void add_tags(osmium::builder::Builder* builder, const std::string& hstore_content) {
+    void add_tags(osmium::builder::Builder* builder, const std::string& hstore_content,
+            const postgres_drivers::ColumnsVector& additional_columns,
+            const std::vector<const char*>& additional_values) {
         osmium::builder::TagListBuilder tl_builder(m_buffer, builder);
         pg_array_hstore_parser::HStoreParser hstore (hstore_content);
         while (hstore.has_next()) {
             pg_array_hstore_parser::StringPair kv_pair = hstore.get_next();
             tl_builder.add_tag(kv_pair.first, kv_pair.second);
+        }
+        postgres_drivers::ColumnsConstIterator kit;
+        std::vector<const char*>::const_iterator vit;
+        for (kit = additional_columns.begin(), vit = additional_values.begin();
+                kit != additional_columns.end(); ++kit, ++vit) {
+            if (*vit && *vit[0] != '\0') {
+                tl_builder.add_tag(kit->name().c_str(), *vit);
+            }
+        }
+        if (additional_columns.size() + 1 == additional_values.size()) {
+            tl_builder.add_tag("type", additional_values.back());
+        }
+    }
+
+    void add_tags(osmium::builder::Builder* builder,
+            const std::vector<osm_vector_tile_impl::StringPair>& tags) {
+        osmium::builder::TagListBuilder tl_builder(m_buffer, builder);
+        for (auto& p : tags) {
+            tl_builder.add_tag(p.first, p.second);
         }
     }
 
@@ -182,11 +208,57 @@ private:
      * \param uid OSM object UID attribute
      * \param timestamp OSM object timestamp
      * \param tags tags to add
+     * \param additional_columns keys which have their own database column
+     * \param additional_values values of keys with own database column
      */
     void add_relation(const osmium::object_id_type id,
             const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members,
             const char* version, const char* changeset, const char* uid, const char* timestamp,
-            const std::string tags) {
+            const std::string tags, const postgres_drivers::ColumnsVector& additional_columns,
+            const std::vector<const char*>& additional_values) {
+        {
+            osmium::builder::RelationBuilder relation_builder(m_buffer);
+            osmium::Relation& relation = static_cast<osmium::Relation&>(relation_builder.object());
+            relation.set_id(id);
+            if (changeset) {
+                relation.set_changeset(changeset);
+            }
+            if (uid) {
+                relation.set_uid(uid);
+            }
+            if (version) {
+                relation.set_version(version);
+            }
+            relation.set_visible(true);
+            if (timestamp) {
+                relation.set_timestamp(timestamp);
+            }
+            relation_builder.set_user("");
+            add_tags(&relation_builder, tags, additional_columns, additional_values);
+            add_relation_members(&relation_builder, members);
+        }
+        m_buffer.commit();
+    }
+
+    /**
+     * \brief Add a way to the buffer.
+     *
+     * This method is intended to be called by the data source implementation.
+     *
+     * \param id OSM object ID
+     * \param nodes nodes as an PostgreSQL array of integers
+     * \param version OSM object version
+     * \param changeset OSM object changeset attribute
+     * \param uid OSM object UID attribute
+     * \param timestamp OSM object timestamp
+     * \param tags tags to add
+     * \param additional_columns keys which have their own database column
+     * \param additional_values values of keys with own database column
+     */
+    void add_relation(const osmium::object_id_type id,
+            const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members,
+            const char* version, const char* changeset, const char* uid, const char* timestamp,
+            const std::vector<osm_vector_tile_impl::StringPair>& tags) {
         {
             osmium::builder::RelationBuilder relation_builder(m_buffer);
             osmium::Relation& relation = static_cast<osmium::Relation&>(relation_builder.object());
@@ -223,9 +295,55 @@ private:
      * \param uid OSM object UID attribute
      * \param timestamp OSM object timestamp
      * \param tags tags to add
+     * \param additional_columns key columns
+     * \param additional_values values of key columns
      */
-    void add_way(const osmium::object_id_type id, const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version,
-            const char* changeset, const char* uid, const char* timestamp, const std::string tags) {
+    void add_way(const osmium::object_id_type id,
+            const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version,
+            const char* changeset, const char* uid, const char* timestamp, const std::string tags,
+            const postgres_drivers::ColumnsVector& additional_columns,
+            const std::vector<const char*>& additional_values) {
+        {
+            osmium::builder::WayBuilder way_builder(m_buffer);
+            osmium::Way& way = static_cast<osmium::Way&>(way_builder.object());
+            way.set_id(id);
+            if (changeset) {
+                way.set_changeset(changeset);
+            }
+            if (uid) {
+                way.set_uid(uid);
+            }
+            if (version) {
+                way.set_version(version);
+            }
+            way.set_visible(true);
+            if (timestamp) {
+                way.set_timestamp(timestamp);
+            }
+            way_builder.set_user("");
+            add_tags(&way_builder, tags, additional_columns, additional_values);
+            add_node_refs(&way_builder, nodes);
+        }
+        m_buffer.commit();
+    }
+
+    /**
+     * \brief Add a way to the buffer.
+     *
+     * This method is intended to be called by the data source implementation.
+     *
+     * \param id OSM object ID
+     * \param nodes node references
+     * \param version OSM object version
+     * \param changeset OSM object changeset attribute
+     * \param uid OSM object UID attribute
+     * \param timestamp OSM object timestamp
+     * \param tags tags to add
+     */
+    void add_way(const osmium::object_id_type id,
+            const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version,
+            const char* changeset, const char* uid, const char* timestamp,
+            const std::vector<osm_vector_tile_impl::StringPair>& tags) {
         {
             osmium::builder::WayBuilder way_builder(m_buffer);
             osmium::Way& way = static_cast<osmium::Way&>(way_builder.object());
@@ -262,8 +380,8 @@ private:
      * \param tags tags to add
      */
     void add_node(const osmium::object_id_type id, const osmium::Location& location,
-            const char* version, const char* changeset, const char* uid, const char* timestamp,
-            const std::string tags) {
+            const char* version, const char* changeset, const char* uid, const char* timestamp) {
+        //TODO DRY
         {
             osmium::builder::NodeBuilder builder(m_buffer);
             osmium::Node& node = static_cast<osmium::Node&>(builder.object());
@@ -286,9 +404,48 @@ private:
             node.set_location(location);
             // Location handler must be called before add_tags(). That's a limitation by Osmium.
             m_location_handler.node(node); // add to location handler to store the location
-            if (!tags.empty()) {
-                add_tags(&builder, tags);
+        }
+        m_buffer.commit();
+    }
+
+    /**
+     * \brief Add node to the buffer.
+     *
+     * \param id OSM object ID
+     * \param location location of the node
+     * \param version OSM object version
+     * \param changeset OSM object changeset attribute
+     * \param uid OSM object UID attribute
+     * \param timestamp OSM object timestamp
+     * \param tags tags to add
+     */
+    void add_node(const osmium::object_id_type id, const osmium::Location& location,
+            const char* version, const char* changeset, const char* uid, const char* timestamp,
+            const std::string tags, const postgres_drivers::ColumnsVector& additional_columns,
+            const std::vector<const char*>& additional_values) {
+        {
+            osmium::builder::NodeBuilder builder(m_buffer);
+            osmium::Node& node = static_cast<osmium::Node&>(builder.object());
+            node.set_id(id);
+            if (version) {
+                node.set_version(version);
             }
+            if (changeset) {
+                node.set_changeset(changeset);
+            }
+            if (uid) {
+                node.set_uid(uid);
+            }
+            // otherwise the resulting OSM file does not contain the visible=true attribute and some programs behave strange
+            node.set_visible(true);
+            if (timestamp) {
+                node.set_timestamp(timestamp);
+            }
+            builder.set_user("");
+            node.set_location(location);
+            // Location handler must be called before add_tags(). That's a limitation by Osmium.
+            m_location_handler.node(node); // add to location handler to store the location
+            add_tags(&builder, tags, additional_columns, additional_values);
         }
         m_buffer.commit();
     }
@@ -352,8 +509,17 @@ public:
         m_data_access.set_add_node_callback(
             [this](const osmium::object_id_type id, const osmium::Location& location,
                 const char* version, const char* changeset, const char* uid,
-                const char* timestamp, const std::string tags) {
-                this->add_node(id, location, version, changeset, uid, timestamp, tags);
+                const char* timestamp, const std::string tags,
+                const postgres_drivers::ColumnsVector& additional_columns,
+                const std::vector<const char*>& additional_values) {
+                this->add_node(id, location, version, changeset, uid, timestamp, tags,
+                    additional_columns, additional_values);
+                this->m_buffer.commit();
+            },
+            [this](const osmium::object_id_type id, const osmium::Location& location,
+                const char* version, const char* changeset, const char* uid,
+                const char* timestamp) {
+                this->add_node(id, location, version, changeset, uid, timestamp);
                 this->m_buffer.commit();
             },
             [this](const osmium::object_id_type id, const osmium::Location& location) {
@@ -361,20 +527,41 @@ public:
                 this->m_buffer.commit();
             }
         );
-        m_data_access.set_add_way_callback([this](const osmium::object_id_type id,
-            const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version, const char* changeset, const char* uid,
-            const char* timestamp, const std::string tags) {
-                this->add_way(id, std::move(nodes), version, changeset, uid, timestamp, tags);
+        m_data_access.set_add_way_callback(
+            [this](const osmium::object_id_type id,
+                const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version,
+                const char* changeset, const char* uid, const char* timestamp, const std::string tags,
+                const postgres_drivers::ColumnsVector& additional_columns,
+                const std::vector<const char*>& additional_values) {
+                this->add_way(id, std::move(nodes), version, changeset, uid, timestamp, tags,
+                        additional_columns, additional_values);
                 this->m_buffer.commit();
-            }
+            },
+            [this](const osmium::object_id_type id,
+                const std::vector<postgres_drivers::MemberIdPos> nodes, const char* version,
+                const char* changeset, const char* uid, const char* timestamp,
+                const std::vector<osm_vector_tile_impl::StringPair>& tags) {
+                    this->add_way(id, std::move(nodes), version, changeset, uid, timestamp, tags);
+                    this->m_buffer.commit();
+                }
         );
-        m_data_access.set_add_relation_callback([this](const osmium::object_id_type id,
-            const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members,
-            const char* version, const char* changeset, const char* uid, const char* timestamp,
-            const std::string tags) {
-                this->add_relation(id, std::move(members), version, changeset, uid, timestamp,
-                        tags);
-                this->m_buffer.commit();
+        m_data_access.set_add_relation_callback(
+            [this](const osmium::object_id_type id,
+                const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members,
+                const char* version, const char* changeset, const char* uid, const char* timestamp,
+                const std::string tags, const postgres_drivers::ColumnsVector& additional_columns,
+                const std::vector<const char*>& additional_values) {
+                    this->add_relation(id, std::move(members), version, changeset, uid, timestamp,
+                            tags, additional_columns, additional_values);
+                    this->m_buffer.commit();
+            },
+            [this](const osmium::object_id_type id,
+                const std::vector<osm_vector_tile_impl::MemberIdRoleTypePos> members,
+                const char* version, const char* changeset, const char* uid, const char* timestamp,
+                const std::vector<osm_vector_tile_impl::StringPair>& tags) {
+                    this->add_relation(id, std::move(members), version, changeset, uid, timestamp,
+                            tags);
+                    this->m_buffer.commit();
             }
         );
     };

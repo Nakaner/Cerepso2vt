@@ -18,12 +18,14 @@ namespace input {
          * Create a provider for untagged nodes from a database table.
          */
         static std::unique_ptr<NodesProvider> db_provider(
-                VectortileGeneratorConfig& config, OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table);
+                VectortileGeneratorConfig& config, ColumnConfigParser& column_config_parser,
+                OSMDataTable&& nodes_table, OSMDataTable&& untagged_nodes_table);
         /**
          * Create a location handler.
          */
         static std::unique_ptr<NodesProvider> flatnodes_provider(
-                VectortileGeneratorConfig& config, OSMDataTable&& nodes_table);
+                VectortileGeneratorConfig& config, ColumnConfigParser& column_config_parser,
+                OSMDataTable&& nodes_table);
     };
 
 } // namespace input
